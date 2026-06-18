@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function ConfirmationModal({ 
   isOpen, 
@@ -22,7 +23,7 @@ export default function ConfirmationModal({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 animate-fadeIn">
       <div className="bg-surface rounded-3xl shadow-2xl max-w-sm w-full p-8 animate-slideUp">
         {/* Title */}
@@ -60,6 +61,7 @@ export default function ConfirmationModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

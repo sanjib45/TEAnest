@@ -27,10 +27,6 @@ export default function DashboardPage() {
           <h1 className="font-headline text-3xl font-semibold text-primary">Dashboard</h1>
           <p className="text-on-surface-variant mt-1">Welcome back — Highland Estate overview</p>
         </div>
-        <button className="px-6 py-3 bg-gradient-to-br from-secondary to-primary text-white rounded-full font-semibold text-sm flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95">
-          <span className="material-symbols-outlined">add</span>
-          New Batch
-        </button>
       </div>
 
       {/* Stats Grid */}
