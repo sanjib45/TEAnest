@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { salesAPI } from '../api/salesApi';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const TEA_TYPES = ['Black', 'Green', 'White', 'Oolong', 'Herbal', 'CTC', 'Orthodox'];
 const STATUSES = ['Pending', 'Shipped', 'Delivered', 'Cancelled'];
@@ -26,6 +27,8 @@ export default function SalesPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [invoice, setInvoice] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   const handlePrint = () => {
     window.print();

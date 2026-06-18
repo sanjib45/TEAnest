@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { laborAPI } from '../api/laborApi';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const ROLES = ['Plucker', 'Factory Worker', 'Supervisor', 'Maintenance', 'Other'];
 const STATUSES = ['Active', 'Inactive', 'On Leave'];
@@ -22,6 +23,8 @@ export default function LaborPage() {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -68,9 +71,23 @@ export default function LaborPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this worker record?')) return;
-    try { await laborAPI.remove(id); toast.success('Deleted'); fetchItems(); fetchStats(); }
-    catch { toast.error('Delete failed'); }
+    setDeleteId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await laborAPI.remove(deleteId);
+      toast.success('Deleted');
+      setShowDeleteConfirm(false);
+      setDeleteId(null);
+      fetchItems();
+      fetchStats();
+    } catch {
+      toast.error('Delete failed');
+      setShowDeleteConfirm(false);
+      setDeleteId(null);
+    }
   };
 
   return (
@@ -227,6 +244,21 @@ export default function LaborPage() {
           <p className="text-xs text-on-surface-variant">Showing {items.length} records</p>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        title="Delete Worker"
+        message="Are you sure you want to delete this worker record? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={true}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteId(null);
+        }}
+      />
     </div>
   );
 }

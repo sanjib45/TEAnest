@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { inventoryAPI } from '../api/inventoryApi';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const TEA_TYPES = ['Black', 'Green', 'White', 'Oolong', 'Herbal', 'CTC', 'Orthodox'];
 const GRADES = ['BOPF', 'BOP', 'OP', 'FBOP', 'Pekoe', 'Dust', 'Fannings', 'Silver Tips', 'Golden Tips'];
@@ -29,6 +30,8 @@ export default function InventoryPage() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -67,9 +70,23 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this batch?')) return;
-    try { await inventoryAPI.remove(id); toast.success('Deleted'); fetchItems(); fetchStats(); }
-    catch { toast.error('Delete failed'); }
+    setDeleteId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await inventoryAPI.remove(deleteId);
+      toast.success('Deleted');
+      setShowDeleteConfirm(false);
+      setDeleteId(null);
+      fetchItems();
+      fetchStats();
+    } catch {
+      toast.error('Delete failed');
+      setShowDeleteConfirm(false);
+      setDeleteId(null);
+    }
   };
 
   return (
@@ -235,6 +252,21 @@ export default function InventoryPage() {
           <p className="text-xs text-on-surface-variant">Showing {items.length} batches</p>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        title="Delete Batch"
+        message="Are you sure you want to delete this batch? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={true}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteId(null);
+        }}
+      />
     </div>
   );
 }
