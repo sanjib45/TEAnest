@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { salesAPI } from '../api/salesApi';
+import { factoryAPI } from '../api/factoryApi';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
 
@@ -53,7 +53,7 @@ function PaymentModal({ sale, onClose, onSaved }) {
     if (!form.amount || parseFloat(form.amount) <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
     try {
-      const { data } = await salesAPI.addPayment(sale._id, form);
+      const { data } = await factoryAPI.addPayment(sale._id, form);
       setPayments(data.data.payments);
       setForm(getEmptyPayment());
       toast.success('Payment recorded!');
@@ -66,7 +66,7 @@ function PaymentModal({ sale, onClose, onSaved }) {
 
   const handleRemove = async (paymentId) => {
     try {
-      const { data } = await salesAPI.removePayment(sale._id, paymentId);
+      const { data } = await factoryAPI.removePayment(sale._id, paymentId);
       setPayments(data.data.payments);
       toast.success('Payment removed');
       onSaved();
@@ -301,7 +301,7 @@ function CsvImportModal({ onClose, onImported }) {
       // Log what we're sending so we can debug easily
       console.log(`[CSV Import] Row ${_row} payload:`, payload);
       try {
-        await salesAPI.create(payload);
+        await factoryAPI.create(payload);
         ok++;
       } catch (err) {
         // Capture the exact backend error message
@@ -329,7 +329,7 @@ function CsvImportModal({ onClose, onImported }) {
     const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href = url; a.download = 'sales_import_template.csv'; a.click();
+    a.href = url; a.download = 'factory_import_template.csv'; a.click();
     URL.revokeObjectURL(url);
   };
 
@@ -344,7 +344,7 @@ function CsvImportModal({ onClose, onImported }) {
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-2xl">upload_file</span>
             <div>
-              <h3 className="text-lg font-bold">Import Sales from CSV</h3>
+              <h3 className="text-lg font-bold">Import Factory from CSV</h3>
               <p className="text-white/75 text-sm">Upload a CSV file to bulk-add sale records</p>
             </div>
           </div>
@@ -487,14 +487,14 @@ function BuyerHistoryDrawer({ buyerName, items, onClose, onPaymentClick }) {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // Aggregate totals
-  let totalSales = 0, totalAdvance = 0, totalPaid = 0;
+  let totalFactory = 0, totalAdvance = 0, totalPaid = 0;
   records.forEach(r => {
     const v = calcVirtuals(r.totalQuantity, r.lessPercentage, r.rate, r.advance, r.payments);
-    totalSales   += v.totalAmount;
+    totalFactory   += v.totalAmount;
     totalAdvance += (r.advance || 0);
     totalPaid    += v.totalPaid;
   });
-  const totalDue = totalSales - totalAdvance - totalPaid;
+  const totalDue = totalFactory - totalAdvance - totalPaid;
 
   return (
     <>
@@ -521,7 +521,7 @@ function BuyerHistoryDrawer({ buyerName, items, onClose, onPaymentClick }) {
           {/* Summary strip */}
           <div className="grid grid-cols-4 gap-2">
             {[
-              { label: 'Total Sales',  value: `₹${fmt(totalSales)}` },
+              { label: 'Total Factory',  value: `₹${fmt(totalFactory)}` },
               { label: 'Advance',      value: `₹${fmt(totalAdvance)}` },
               { label: 'Received',     value: `₹${fmt(totalPaid)}` },
               { label: 'Due',          value: `₹${fmt(totalDue)}`, red: totalDue > 0 },
@@ -603,8 +603,8 @@ function BuyerHistoryDrawer({ buyerName, items, onClose, onPaymentClick }) {
   );
 }
 
-// ── Main SalesPage ──────────────────────────────────────────
-export default function SalesPage() {
+// ── Main FactoryPage ──────────────────────────────────────────
+export default function FactoryPage() {
   const [items,       setItems]       = useState([]);
   const [stats,       setStats]       = useState(null);
   const [form,        setForm]        = useState(getEmptyForm());
@@ -626,14 +626,14 @@ export default function SalesPage() {
     try {
       const params = {};
       if (search) params.search = search;
-      const { data } = await salesAPI.getAll(params);
+      const { data } = await factoryAPI.getAll(params);
       setItems(data.data);
-    } catch { toast.error('Failed to load sales data'); }
+    } catch { toast.error('Failed to load factory data'); }
     setLoading(false);
   }, [search]);
 
   const fetchStats = async () => {
-    try { const { data } = await salesAPI.getStats(); setStats(data.data); } catch {}
+    try { const { data } = await factoryAPI.getStats(); setStats(data.data); } catch {}
   };
 
   useEffect(() => { fetchItems(); fetchStats(); }, [fetchItems]);
@@ -642,8 +642,8 @@ export default function SalesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editing) { await salesAPI.update(editing, form); toast.success('Sale record updated!'); }
-      else          { await salesAPI.create(form);          toast.success('Sale record created!'); }
+      if (editing) { await factoryAPI.update(editing, form); toast.success('Sale record updated!'); }
+      else          { await factoryAPI.create(form);          toast.success('Sale record created!'); }
       setForm(getEmptyForm()); setEditing(null); setShowForm(false);
       fetchItems(); fetchStats();
     } catch (err) {
@@ -667,7 +667,7 @@ export default function SalesPage() {
   };
 
   const handleDelete = async () => {
-    try { await salesAPI.remove(deleteId); toast.success('Deleted'); fetchItems(); fetchStats(); }
+    try { await factoryAPI.remove(deleteId); toast.success('Deleted'); fetchItems(); fetchStats(); }
     catch { toast.error('Delete failed'); }
     setDeleteId(null);
   };
@@ -717,8 +717,8 @@ export default function SalesPage() {
         {/* ── Page Header ── */}
         <div className="flex justify-between items-end mb-8">
           <div>
-            <h1 className="font-headline text-3xl font-semibold text-primary">Sales Ledger</h1>
-            <p className="text-on-surface-variant mt-1">Track tea sales, quantities, rates & payments.</p>
+            <h1 className="font-headline text-3xl font-semibold text-primary">Factory Ledger</h1>
+            <p className="text-on-surface-variant mt-1">Track tea factory, quantities, rates & payments.</p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -742,7 +742,7 @@ export default function SalesPage() {
         {stats && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {[
-              { label: 'Total Sales',    value: `₹${fmt(stats.totalSalesAmount)}`, icon: 'shopping_bag',  color: 'text-primary' },
+              { label: 'Total Factory',    value: `₹${fmt(stats.totalFactoryAmount)}`, icon: 'shopping_bag',  color: 'text-primary' },
               { label: 'Total Advance',  value: `₹${fmt(stats.totalAdvance)}`,     icon: 'price_check',   color: 'text-secondary' },
               { label: 'Total Received', value: `₹${fmt(stats.totalPaid)}`,        icon: 'payments',      color: 'text-green-600' },
               { label: 'Total Due',      value: `₹${fmt(stats.totalDue)}`,         icon: 'account_balance_wallet', color: stats.totalDue > 0 ? 'text-red-500' : 'text-green-600' },
@@ -863,11 +863,11 @@ export default function SalesPage() {
           </div>
         )}
 
-        {/* ── Sales Table ── */}
+        {/* ── Factory Table ── */}
         <div className="glass-card rounded-3xl overflow-hidden shadow-xl shadow-primary/5">
           {/* Table Header / Filters */}
           <div className="p-4 border-b border-outline-variant/20 flex flex-wrap gap-3 items-center bg-surface-container-low/50">
-            <h3 className="font-headline text-xl font-semibold text-primary flex-1">Sales Records</h3>
+            <h3 className="font-headline text-xl font-semibold text-primary flex-1">Factory Records</h3>
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
               <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search buyer..."
@@ -878,29 +878,30 @@ export default function SalesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="bg-surface-container-lowest/50">
-                  {['Date', 'Buyer Name', 'Total Qty', 'Less %', 'Less Qty', 'Net Qty', 'Rate (₹)', 'Total Amt (₹)', 'Advance (₹)', 'Paid (₹)', 'Due (₹)', 'Remarks', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-4 text-on-surface-variant uppercase text-xs font-semibold tracking-wider whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/10">
+              <tr className="bg-surface border-y border-outline-variant/20">
+                {['Sl. No.', 'Date', 'Buyer Name', 'Total Qty', 'Less %', 'Less Qty', 'Net Qty', 'Rate (₹)', 'Total Amt (₹)', 'Advance (₹)', 'Paid (₹)', 'Due (₹)', 'Remarks', 'Action'].map(h => (
+                  <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
                 {loading ? (
-                  <tr><td colSpan={13} className="text-center py-12 text-on-surface-variant">
+                  <tr><td colSpan={14} className="text-center py-12 text-on-surface-variant">
                     <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
                   </td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={13} className="text-center py-16 text-on-surface-variant">
+                  <tr><td colSpan={14} className="text-center py-16 text-on-surface-variant">
                     <span className="material-symbols-outlined text-5xl text-outline mb-2 block">inventory_2</span>
-                    No sales entries yet. Click &quot;New Entry&quot; to create one.
+                    No factory entries yet. Click &quot;New Entry&quot; to create one.
                   </td></tr>
-                ) : items.map(item => {
+                ) : items.map((item, index) => {
                   const v = calcVirtuals(item.totalQuantity, item.lessPercentage, item.rate, item.advance, item.payments);
                   const isDue = v.due > 0;
                   return (
-                    <tr key={item._id} className="hover:bg-surface-container-lowest/40 transition-colors">
+                    <tr key={item._id} className="odd:bg-white even:bg-surface-container-lowest/50 border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors text-on-surface">
+                      <td className="px-4 py-4 text-on-surface-variant font-medium">{index + 1}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-on-surface-variant">
-                        {new Date(item.date).toLocaleDateString('en-IN')}
+                        <span className="block">{new Date(item.date).toLocaleDateString('en-CA')}</span>
                       </td>
                       <td className="px-4 py-4 font-semibold text-on-surface whitespace-nowrap">
                         <button
@@ -930,18 +931,18 @@ export default function SalesPage() {
                         ) : '—'}
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex gap-1">
+                        <div className="flex gap-2">
                           <button onClick={() => setPaymentSale(item)} title="Payments"
-                            className="p-2 rounded-lg hover:bg-green-50 text-green-600 transition-colors">
-                            <span className="material-symbols-outlined text-sm">payments</span>
+                            className="px-3 py-1.5 border border-[#3b4b59] text-[#3b4b59] rounded-lg text-xs font-semibold hover:bg-[#3b4b59]/5 transition-colors whitespace-nowrap">
+                            Payments
                           </button>
                           <button onClick={() => handleEdit(item)} title="Edit"
-                            className="p-2 rounded-lg hover:bg-secondary-container/30 text-secondary transition-colors">
-                            <span className="material-symbols-outlined text-sm">edit</span>
+                            className="px-3 py-1.5 border border-secondary text-secondary rounded-lg text-xs font-semibold hover:bg-secondary/5 transition-colors whitespace-nowrap">
+                            Edit
                           </button>
                           <button onClick={() => setDeleteId(item._id)} title="Delete"
-                            className="p-2 rounded-lg hover:bg-red-50 text-error transition-colors">
-                            <span className="material-symbols-outlined text-sm">delete</span>
+                            className="px-3 py-1.5 border border-error text-error rounded-lg text-xs font-semibold hover:bg-error/5 transition-colors whitespace-nowrap">
+                            Cancel
                           </button>
                         </div>
                       </td>

@@ -5,9 +5,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
-import InventoryPage from './pages/InventoryPage';
+import MerchantPage from './pages/MerchantPage';
 import LaborPage from './pages/LaborPage';
-import SalesPage from './pages/SalesPage';
+import FactoryPage from './pages/FactoryPage';
 import PaymentsPage from './pages/PaymentsPage';
 import { ReportsPage } from './pages/PlaceholderPages';
 
@@ -35,9 +35,9 @@ export default function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
+            <Route path="merchant" element={<MerchantPage />} />
             <Route path="labor" element={<LaborPage />} />
-            <Route path="sales" element={<SalesPage />} />
+            <Route path="factory" element={<FactoryPage />} />
             <Route path="payments" element={<PaymentsPage />} />
             <Route path="reports" element={<ReportsPage />} />
           </Route>

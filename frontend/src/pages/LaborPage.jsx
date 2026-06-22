@@ -195,44 +195,42 @@ export default function LaborPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-surface-container-lowest/50">
-                {['Name','Role','Contact','Daily Wage','Status','Join Date','Actions'].map(h=>(
-                  <th key={h} className="px-6 py-4 text-on-surface-variant uppercase text-xs font-semibold tracking-wider">{h}</th>
+              <tr className="bg-surface border-y border-outline-variant/20">
+                {['Sl. No.', 'Name', 'Role', 'Contact', 'Daily Wage', 'Status', 'Join Date', 'Action'].map(h=>(
+                  <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/10">
+            <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12 text-on-surface-variant">
+                <tr><td colSpan={8} className="text-center py-12 text-on-surface-variant">
                   <span className="material-symbols-outlined animate-spin text-primary text-3xl">progress_activity</span>
                 </td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-16 text-on-surface-variant">
+                <tr><td colSpan={8} className="text-center py-16 text-on-surface-variant">
                   <span className="material-symbols-outlined text-5xl text-outline mb-2 block">groups</span>
                   No records yet. Click "Add Worker" to add one.
                 </td></tr>
-              ) : items.map(item => (
-                <tr key={item._id} className="hover:bg-surface-container-lowest/40 transition-colors">
-                  <td className="px-6 py-5">
-                    <div className="font-bold text-primary">{item.name}</div>
+              ) : items.map((item, index) => (
+                <tr key={item._id} className="odd:bg-white even:bg-surface-container-lowest/50 border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors text-on-surface">
+                  <td className="px-4 py-4 text-on-surface-variant font-medium">{index + 1}</td>
+                  <td className="px-4 py-4 font-bold text-primary">{item.name}</td>
+                  <td className="px-4 py-4 text-on-surface-variant">{item.role}</td>
+                  <td className="px-4 py-4 text-on-surface-variant">{item.contact || '-'}</td>
+                  <td className="px-4 py-4 font-bold text-primary">₹{item.dailyWage}</td>
+                  <td className="px-4 py-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide ${statusStyle[item.status]||'bg-surface-variant text-on-surface-variant'}`}>{item.status}</span>
                   </td>
-                  <td className="px-6 py-5 text-on-surface-variant">{item.role}</td>
-                  <td className="px-6 py-5 text-on-surface-variant">{item.contact || '-'}</td>
-                  <td className="px-6 py-5 font-bold text-primary">₹{item.dailyWage}</td>
-                  <td className="px-6 py-5">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyle[item.status]||'bg-surface-variant text-on-surface-variant'}`}>{item.status}</span>
+                  <td className="px-4 py-4 text-on-surface-variant whitespace-nowrap">
+                    <span className="block">{new Date(item.joinDate).toLocaleDateString('en-CA')}</span>
+                    <span className="text-xs">{new Date(item.joinDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
                   </td>
-                  <td className="px-6 py-5 text-on-surface-variant">{new Date(item.joinDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-5">
-                    <div className="flex gap-1">
-                      <button onClick={()=>handleEdit(item)} className="p-2 rounded-lg hover:bg-secondary-container/30 text-secondary transition-colors">
-                        <span className="material-symbols-outlined text-sm">edit</span>
-                      </button>
-                      <button onClick={()=>handleDelete(item._id)} className="p-2 rounded-lg hover:bg-red-50 text-error transition-colors">
-                        <span className="material-symbols-outlined text-sm">delete</span>
-                      </button>
+                  <td className="px-4 py-4">
+                    <div className="flex gap-2">
+                      <button onClick={()=>handleEdit(item)} className="px-3 py-1.5 border border-secondary text-secondary rounded-lg text-xs font-semibold hover:bg-secondary/5 transition-colors whitespace-nowrap">Edit</button>
+                      <button onClick={()=>handleDelete(item._id)} className="px-3 py-1.5 border border-error text-error rounded-lg text-xs font-semibold hover:bg-error/5 transition-colors whitespace-nowrap">Cancel</button>
                     </div>
                   </td>
                 </tr>

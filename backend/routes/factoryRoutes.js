@@ -1,6 +1,6 @@
 const router = require('express').Router();
-const ctrl = require('../controllers/salesController');
-const { createRules, updateRules, paymentRules } = require('../validators/salesValidator');
+const ctrl = require('../controllers/factoryController');
+const { createRules, updateRules, paymentRules } = require('../validators/factoryValidator');
 
 router.get('/stats', ctrl.getStats);
 router.route('/').get(ctrl.getAll).post(createRules, ctrl.create);

@@ -68,38 +68,39 @@ export default function DashboardPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-surface-container-lowest/50">
-                {['Batch ID', 'Type', 'Weight', 'Source Section', 'Quality', 'Status'].map(h => (
-                  <th key={h} className="px-6 py-4 text-on-surface-variant uppercase text-xs font-semibold tracking-wider">{h}</th>
+              <tr className="bg-surface border-y border-outline-variant/20">
+                {['Sl. No.', 'Batch ID', 'Type', 'Weight', 'Source Section', 'Quality', 'Status'].map(h => (
+                  <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/10">
+            <tbody>
               {recentBatches.map((b, i) => (
-                <tr key={b.id} className={`hover:bg-surface-container-lowest/40 transition-colors ${i === 0 ? 'success-highlight' : ''}`}>
-                  <td className="px-6 py-5">
+                <tr key={b.id} className="odd:bg-white even:bg-surface-container-lowest/50 border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors text-on-surface">
+                  <td className="px-4 py-4 text-on-surface-variant font-medium">{i + 1}</td>
+                  <td className="px-4 py-4">
                     <div className="font-bold text-primary">{b.id}</div>
                     <div className="text-xs text-on-surface-variant">{b.time}</div>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-4 text-on-surface-variant whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-primary" />
                       {b.type}
                     </div>
                   </td>
-                  <td className="px-6 py-5 font-medium">{b.weight}</td>
-                  <td className="px-6 py-5 text-on-surface-variant">{b.section}</td>
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-4 font-medium text-on-surface-variant">{b.weight}</td>
+                  <td className="px-4 py-4 text-on-surface-variant">{b.section}</td>
+                  <td className="px-4 py-4">
                     <div className="flex items-center text-secondary">
                       {[...Array(5)].map((_, j) => (
                         <span key={j} className="material-symbols-outlined text-sm" style={{ fontVariationSettings: `'FILL' ${j < b.stars ? 1 : 0}` }}>star</span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-6 py-5">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyle[b.status] || 'bg-surface-variant text-on-surface-variant'}`}>
+                  <td className="px-4 py-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide ${statusStyle[b.status] || 'bg-surface-variant text-on-surface-variant'}`}>
                       {b.status}
                     </span>
                   </td>

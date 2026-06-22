@@ -4,9 +4,9 @@ import ConfirmationModal from './ConfirmationModal';
 
 const navItems = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/inventory', icon: 'inventory_2', label: 'Inventory' },
+  { to: '/merchant', icon: 'inventory_2', label: 'Merchant' },
   { to: '/labor', icon: 'groups', label: 'Labor' },
-  { to: '/sales', icon: 'potted_plant', label: 'Sales' },
+  { to: '/factory', icon: 'potted_plant', label: 'Factory' },
   { to: '/payments', icon: 'payments', label: 'Payments' },
   { to: '/reports', icon: 'assessment', label: 'Reports' },
 ];
