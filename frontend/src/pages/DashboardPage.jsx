@@ -30,7 +30,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((s) => (
           <div key={s.label} className="glass-card p-4 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -50,13 +50,13 @@ export default function DashboardPage() {
 
       {/* Recent Batches Table */}
       <div className="glass-card rounded-3xl overflow-hidden shadow-xl shadow-primary/5">
-        <div className="p-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-low/50">
+        <div className="p-4 border-b border-outline-variant/20 flex flex-col sm:flex-row gap-3 justify-between sm:items-center bg-surface-container-low/50">
           <h3 className="font-headline text-xl font-semibold text-primary">Recent Production Batches</h3>
           <div className="flex items-center gap-2">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
               <input
-                className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary/20 text-sm w-52 outline-none"
+                className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary/20 text-sm w-full sm:w-52 outline-none"
                 placeholder="Search batch..."
                 type="text"
               />

@@ -130,7 +130,7 @@ export default function LaborPage() {
           <h2 className="font-headline text-xl font-semibold text-primary mb-4">{editing ? 'Edit Worker' : 'Add New Worker'}</h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { name:'name', label:'Name *', type:'text', placeholder:'John Doe' },
+              { name:'name', label:'Staff Count *', type:'number', placeholder:'Enter number of people' },
               { name:'contact', label:'Contact Number', type:'text', placeholder:'+91...' },
               { name:'dailyWage', label:'Daily Wage (₹) *', type:'number', placeholder:'0.00' },
               { name:'joinDate', label:'Join Date *', type:'date' },

@@ -7,3 +7,4 @@ router.route('/').get(ctrl.getAll).post(createRules, ctrl.create);
 router.route('/:id').get(ctrl.getById).put(updateRules, ctrl.update).delete(ctrl.remove);
 
 module.exports = router;
+

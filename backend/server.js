@@ -2,9 +2,28 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const mongoose = require('mongoose');
 
 dotenv.config();
 connectDB();
+
+// ── One-time migration: drop the old unique orderId index if it exists ──
+// The original Sales schema had orderId: { unique: true }. After the schema
+// redesign, that index is stale and causes E11000 duplicate key errors.
+mongoose.connection.once('open', async () => {
+  try {
+    const salesCol = mongoose.connection.collection('sales');
+    const indexes = await salesCol.indexes();
+    const staleIdx = indexes.find(idx => idx.key && idx.key.orderId !== undefined);
+    if (staleIdx) {
+      await salesCol.dropIndex(staleIdx.name);
+      console.log('[Migration] Dropped stale orderId index from sales collection');
+    }
+  } catch (e) {
+    // Index may already be gone — safe to ignore
+    console.log('[Migration] orderId index already removed or not found:', e.message);
+  }
+});
 
 const app = express();
 app.use(cors());
