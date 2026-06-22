@@ -27,14 +27,10 @@ export default function DashboardPage() {
           <h1 className="font-headline text-3xl font-semibold text-primary">Dashboard</h1>
           <p className="text-on-surface-variant mt-1">Welcome back — Highland Estate overview</p>
         </div>
-        <button className="px-6 py-3 bg-gradient-to-br from-secondary to-primary text-white rounded-full font-semibold text-sm flex items-center gap-2 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all active:scale-95">
-          <span className="material-symbols-outlined">add</span>
-          New Batch
-        </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((s) => (
           <div key={s.label} className="glass-card p-4 rounded-2xl shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -54,13 +50,13 @@ export default function DashboardPage() {
 
       {/* Recent Batches Table */}
       <div className="glass-card rounded-3xl overflow-hidden shadow-xl shadow-primary/5">
-        <div className="p-4 border-b border-outline-variant/20 flex justify-between items-center bg-surface-container-low/50">
+        <div className="p-4 border-b border-outline-variant/20 flex flex-col sm:flex-row gap-3 justify-between sm:items-center bg-surface-container-low/50">
           <h3 className="font-headline text-xl font-semibold text-primary">Recent Production Batches</h3>
           <div className="flex items-center gap-2">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
               <input
-                className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary/20 text-sm w-52 outline-none"
+                className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary/20 text-sm w-full sm:w-52 outline-none"
                 placeholder="Search batch..."
                 type="text"
               />
@@ -72,38 +68,39 @@ export default function DashboardPage() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="bg-surface-container-lowest/50">
-                {['Batch ID', 'Type', 'Weight', 'Source Section', 'Quality', 'Status'].map(h => (
-                  <th key={h} className="px-6 py-4 text-on-surface-variant uppercase text-xs font-semibold tracking-wider">{h}</th>
+              <tr className="bg-surface border-y border-outline-variant/20">
+                {['Sl. No.', 'Batch ID', 'Type', 'Weight', 'Source Section', 'Quality', 'Status'].map(h => (
+                  <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/10">
+            <tbody>
               {recentBatches.map((b, i) => (
-                <tr key={b.id} className={`hover:bg-surface-container-lowest/40 transition-colors ${i === 0 ? 'success-highlight' : ''}`}>
-                  <td className="px-6 py-5">
+                <tr key={b.id} className="odd:bg-white even:bg-surface-container-lowest/50 border-b border-outline-variant/10 hover:bg-surface-container-low transition-colors text-on-surface">
+                  <td className="px-4 py-4 text-on-surface-variant font-medium">{i + 1}</td>
+                  <td className="px-4 py-4">
                     <div className="font-bold text-primary">{b.id}</div>
                     <div className="text-xs text-on-surface-variant">{b.time}</div>
                   </td>
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-4 text-on-surface-variant whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full bg-primary" />
                       {b.type}
                     </div>
                   </td>
-                  <td className="px-6 py-5 font-medium">{b.weight}</td>
-                  <td className="px-6 py-5 text-on-surface-variant">{b.section}</td>
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-4 font-medium text-on-surface-variant">{b.weight}</td>
+                  <td className="px-4 py-4 text-on-surface-variant">{b.section}</td>
+                  <td className="px-4 py-4">
                     <div className="flex items-center text-secondary">
                       {[...Array(5)].map((_, j) => (
                         <span key={j} className="material-symbols-outlined text-sm" style={{ fontVariationSettings: `'FILL' ${j < b.stars ? 1 : 0}` }}>star</span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-6 py-5">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyle[b.status] || 'bg-surface-variant text-on-surface-variant'}`}>
+                  <td className="px-4 py-4">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wide ${statusStyle[b.status] || 'bg-surface-variant text-on-surface-variant'}`}>
                       {b.status}
                     </span>
                   </td>

@@ -15,6 +15,6 @@ const placeholder = (title, icon, desc) => () => (
 );
 
 export const LaborPage = placeholder('Labor Management', 'groups', 'Track workers, attendance, shifts and wages.');
-export const SalesPage = placeholder('Sales', 'potted_plant', 'Monitor sales orders, buyers and dispatch records.');
+export const FactoryPage = placeholder('Factory', 'potted_plant', 'Monitor factory orders, buyers and dispatch records.');
 export const PaymentsPage = placeholder('Payments & Payroll', 'payments', 'Process salaries, advances and deductions.');
 export const ReportsPage = placeholder('Reports & Analytics', 'assessment', 'View insights, trends and export data.');

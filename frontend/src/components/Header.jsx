@@ -1,22 +1,29 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import ConfirmationModal from './ConfirmationModal';
 
 const navItems = [
   { to: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/inventory', icon: 'inventory_2', label: 'Inventory' },
+  { to: '/merchant', icon: 'inventory_2', label: 'Merchant' },
   { to: '/labor', icon: 'groups', label: 'Labor' },
-  { to: '/sales', icon: 'potted_plant', label: 'Sales' },
+  { to: '/factory', icon: 'potted_plant', label: 'Factory' },
   { to: '/payments', icon: 'payments', label: 'Payments' },
   { to: '/reports', icon: 'assessment', label: 'Reports' },
 ];
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const handleConfirmLogout = () => {
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('token');
+    setShowLogoutConfirm(false);
     navigate('/login');
   };
 
@@ -54,7 +61,7 @@ export default function Header() {
           <button className="p-2 text-on-surface-variant hover:bg-primary/5 rounded-full transition-all active:scale-90" title="Account">
             <span className="material-symbols-outlined">account_circle</span>
           </button>
-          <button onClick={handleLogout} className="p-2 text-error hover:bg-red-50 rounded-full transition-all active:scale-90" title="Logout">
+          <button onClick={handleLogoutClick} className="p-2 text-error hover:bg-red-50 rounded-full transition-all active:scale-90" title="Logout">
             <span className="material-symbols-outlined">logout</span>
           </button>
           {/* Mobile menu */}
@@ -84,6 +91,18 @@ export default function Header() {
           ))}
         </div>
       )}
+      
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showLogoutConfirm}
+        title="Logout"
+        message="Are you sure you want to logout from your account?"
+        confirmText="Logout"
+        cancelText="Cancel"
+        isDangerous={true}
+        onConfirm={handleConfirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </header>
   );
 }

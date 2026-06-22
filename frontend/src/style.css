@@ -87,3 +87,11 @@
 .stagger-2 { animation-delay: 0.2s; opacity: 0; }
 .stagger-3 { animation-delay: 0.3s; opacity: 0; }
 .stagger-4 { animation-delay: 0.4s; opacity: 0; }
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

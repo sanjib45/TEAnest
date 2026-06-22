@@ -1,4 +1,4 @@
-import API from './inventoryApi'; // Reusing the configured axios instance
+import API from './merchantApi'; // Reusing the configured axios instance
 
 export const paymentsAPI = {
   getAll: (params) => API.get('/payments', { params }),

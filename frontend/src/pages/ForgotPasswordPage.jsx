@@ -24,13 +24,13 @@ export default function ForgotPasswordPage() {
   return (
     <div className="fixed inset-0 overflow-hidden flex items-center justify-center p-4">
       <div className="fixed inset-0 z-0 bg-primary/20 mix-blend-overlay" />
-      <div className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/login-bg.png')" }} />
+      <div className="fixed inset-0 z-0 bg-[size:100%_100%] bg-center bg-no-repeat" style={{ backgroundImage: "url('/login-bg.png')" }} />
       
       <main className="relative z-20 w-full max-w-[440px]">
         <div className="glass-panel w-full rounded-3xl p-8 md:p-12 relative overflow-hidden leaf-pattern">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-secondary to-primary flex items-center justify-center shadow-lg">
-              <span className="material-symbols-outlined text-white text-3xl">lock_reset</span>
+            <div className="w-32 h-32 rounded-full overflow-hidden flex justify-center items-start shadow-2xl shadow-primary/20 bg-white border-4 border-white mb-6">
+              <img src="/logo.png" alt="TEAnest Logo" className="h-[140%] max-w-none -mt-[5%]" />
             </div>
             <h1 className="font-headline text-3xl font-bold text-primary text-center">Reset Password</h1>
             <p className="text-on-surface-variant text-sm mt-1 font-semibold tracking-widest uppercase">Recover Your Account</p>
