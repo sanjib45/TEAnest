@@ -24,7 +24,12 @@ exports.getAll = async (req, res) => {
     if (startDate || endDate) {
       filter.transactionDate = {};
       if (startDate) filter.transactionDate.$gte = new Date(startDate);
-      if (endDate) filter.transactionDate.$lte = new Date(endDate);
+      if (endDate) {
+        // Include the full end day by setting time to 23:59:59.999
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.transactionDate.$lte = end;
+      }
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
