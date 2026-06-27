@@ -68,7 +68,7 @@ export default function LoginPage() {
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             <div className="w-32 h-32 rounded-full overflow-hidden flex justify-center items-start shadow-2xl shadow-primary/20 bg-white border-4 border-white mb-6">
-              <img src="/logo.png" alt="TEAnest Logo" className="h-[120%] max-w-none -mt-[10%]" />
+              <img src="/logo.png" alt="DOOARS GREEN Logo" className="h-[120%] max-w-none -mt-[10%]" />
             </div>
             <h1 className="font-headline text-3xl font-bold text-primary text-center">Welcome Back</h1>
             <p className="text-on-surface-variant text-sm mt-1 font-semibold tracking-widest uppercase">Sign in to your estate</p>

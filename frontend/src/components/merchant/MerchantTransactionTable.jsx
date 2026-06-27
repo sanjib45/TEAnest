@@ -4,7 +4,7 @@
  * Props:
  *  items           – array of transaction objects from the API
  *  loading         – boolean
- *  onViewDetails   – (id: string) => void
+ *  onViewDetails   – (item: object) => void  ← passes full item (for merchantName)
  *  onEdit          – (item: object) => void
  *  onDelete        – (id: string) => void
  */
@@ -38,8 +38,8 @@ export default function MerchantTransactionTable({ items, loading, onViewDetails
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="bg-surface border-y border-outline-variant/20">
+        <thead className="sticky top-0 z-10">
+          <tr className="bg-surface border-y border-outline-variant/20 shadow-sm">
             {TABLE_HEADERS.map((h) => (
               <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">
                 {h}
@@ -119,9 +119,9 @@ export default function MerchantTransactionTable({ items, loading, onViewDetails
                   <div className="flex gap-2">
                     <button
                       id={`details-${item._id}`}
-                      onClick={() => onViewDetails(item._id)}
+                      onClick={() => onViewDetails(item)}
                       className="px-3 py-1.5 border border-[#3b4b59] text-[#3b4b59] rounded-lg text-xs font-semibold hover:bg-[#3b4b59]/5 transition-colors whitespace-nowrap"
-                      title="View Details"
+                      title="View Merchant History"
                     >
                       View Details
                     </button>

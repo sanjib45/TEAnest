@@ -1,5 +1,7 @@
 const MerchantTransaction = require('../models/MerchantTransaction');
+const MerchantPayment     = require('../models/MerchantPayment');
 const { validationResult } = require('express-validator');
+
 
 // ── Utility ───────────────────────────────────────────────────────────────────
 function genTxnId() {
@@ -129,7 +131,7 @@ exports.create = async (req, res) => {
   }
 };
 
-// ── PUT /api/merchant-transactions/:id ────────────────────────────────────────
+// ── PUT /api/merchant-transactions/:id ────────────────────────────────────────────────────
 exports.update = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -137,16 +139,28 @@ exports.update = async (req, res) => {
   }
 
   try {
-    // Fetch existing doc to merge before recalculating
+    // Fetch existing doc so we can fill in any fields the request doesn't touch
     const existing = await MerchantTransaction.findById(req.params.id).lean();
     if (!existing) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
+    // Merge existing values + incoming changes, then recalculate all derived fields
     const merged = { ...existing, ...req.body };
-    const calc = MerchantTransaction.computeFields(merged);
+    const calc   = MerchantTransaction.computeFields(merged);
+
+    // ── Explicitly compute balance ─────────────────────────────────────────
+    // We must do this here (not rely solely on the model hook) because:
+    //  • The model’s pre('findOneAndUpdate') hook is a safety net but can miss
+    //    edge cases depending on Mongoose internals.
+    //  • balance = finalPayable − total of all MerchantPayment records.
+    //    If advancePayment or qty/rate changes, finalPayable changes, so
+    //    balance must be recomputed against the real payment history.
+    const payments  = await MerchantPayment.find({ transaction: req.params.id }).lean();
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const balance   = Math.round((calc.finalPayable - totalPaid) * 100) / 100;
 
     const item = await MerchantTransaction.findByIdAndUpdate(
       req.params.id,
-      { ...req.body, ...calc },
+      { ...req.body, ...calc, balance },   // balance is always explicit here
       { new: true, runValidators: true }
     );
 

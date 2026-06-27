@@ -1,17 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { factoryAPI } from '../api/factoryApi';
+import { buyerAPI } from '../api/buyerApi';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
+import SearchableSelect from '../components/SearchableSelect';
+import CustomDateRangeModal from '../components/merchant/CustomDateRangeModal';
 
 const PAYMENT_MODES = ['Cash', 'Online', 'Cheque'];
 
 const getEmptyForm = () => ({
   date:           new Date().toISOString().slice(0, 10),
   buyerName:      '',
+  buyerId:        '',
+  buyerObj:       null,
   totalQuantity:  '',
-  lessPercentage: '2',
+  lessPercentage: '',
   rate:           '',
-  advance:        '0',
+  advance:        '',
   dueDate:        '',
   remarks:        '',
 });
@@ -74,8 +80,8 @@ function PaymentModal({ sale, onClose, onSaved }) {
     setDeleteId(null);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-surface w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white">
@@ -163,7 +169,8 @@ function PaymentModal({ sale, onClose, onSaved }) {
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -336,8 +343,8 @@ function CsvImportModal({ onClose, onImported }) {
   const validCount   = rows.filter(r => r._errors.length === 0).length;
   const invalidCount = rows.filter(r => r._errors.length >  0).length;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-surface w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white flex items-center justify-between">
@@ -476,7 +483,8 @@ function CsvImportModal({ onClose, onImported }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -496,12 +504,12 @@ function BuyerHistoryDrawer({ buyerName, items, onClose, onPaymentClick }) {
   });
   const totalDue = totalFactory - totalAdvance - totalPaid;
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="fixed inset-0 z-[100] bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
       {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-2xl bg-white dark:bg-surface shadow-2xl flex flex-col animate-slide-in-right">
+      <div className="fixed right-0 top-0 bottom-0 z-[101] w-full max-w-2xl bg-white dark:bg-surface shadow-2xl flex flex-col animate-slide-in-right">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white">
           <div className="flex items-center justify-between mb-4">
@@ -599,7 +607,8 @@ function BuyerHistoryDrawer({ buyerName, items, onClose, onPaymentClick }) {
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
@@ -617,6 +626,13 @@ export default function FactoryPage() {
   const [showCsvImport, setShowCsvImport] = useState(false); // for CSV import modal
   const [buyerHistory, setBuyerHistory]   = useState(null);  // buyer name string for history drawer
 
+  // ── Date Filter state ──
+  const [datePreset, setDatePreset] = useState('');
+  const [startDate, setStartDate]   = useState('');
+  const [endDate, setEndDate]       = useState('');
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [tempDates, setTempDates] = useState({ start: '', end: '' });
+
   // live preview virtuals while filling form
   const preview = calcVirtuals(form.totalQuantity, form.lessPercentage, form.rate, form.advance, []);
 
@@ -626,11 +642,13 @@ export default function FactoryPage() {
     try {
       const params = {};
       if (search) params.search = search;
+      if (startDate) params.startDate = startDate;
+      if (endDate)   params.endDate   = endDate;
       const { data } = await factoryAPI.getAll(params);
       setItems(data.data);
     } catch { toast.error('Failed to load factory data'); }
     setLoading(false);
-  }, [search]);
+  }, [search, startDate, endDate]);
 
   const fetchStats = async () => {
     try { const { data } = await factoryAPI.getStats(); setStats(data.data); } catch {}
@@ -655,6 +673,8 @@ export default function FactoryPage() {
     setForm({
       date:           item.date?.slice(0, 10) || '',
       buyerName:      item.buyerName,
+      buyerId:        item.buyer || '',
+      buyerObj:       item.buyer ? { _id: item.buyer, name: item.buyerName, phone: '' } : null,
       totalQuantity:  item.totalQuantity,
       lessPercentage: item.lessPercentage,
       rate:           item.rate,
@@ -676,6 +696,25 @@ export default function FactoryPage() {
 
   return (
     <div className="relative">
+      {/* Date Modal */}
+      <CustomDateRangeModal
+        isOpen={showCustomDateModal}
+        onClose={() => setShowCustomDateModal(false)}
+        tempDates={tempDates}
+        setTempDates={setTempDates}
+        onApply={() => {
+          setStartDate(tempDates.start);
+          setEndDate(tempDates.end);
+          setDatePreset('Custom');
+          setShowCustomDateModal(false);
+        }}
+        onClear={() => {
+          setStartDate('');
+          setEndDate('');
+          setDatePreset('');
+          setShowCustomDateModal(false);
+        }}
+      />
       {/* Buyer History Drawer */}
       {buyerHistory && (
         <BuyerHistoryDrawer
@@ -772,11 +811,17 @@ export default function FactoryPage() {
                   <input name="date" type="date" value={form.date} onChange={handleChange} required
                     className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
                 </div>
-                {/* Buyer Name */}
+                {/* Buyer Name (SearchableSelect) */}
                 <div className="lg:col-span-2">
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Buyer Name *</label>
-                  <input name="buyerName" type="text" value={form.buyerName} onChange={handleChange} required placeholder="e.g. Bisheshwar Roy"
-                    className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
+                  <SearchableSelect
+                    api={buyerAPI}
+                    value={form.buyerObj || null}
+                    onChange={(b) => setForm(f => ({ ...f, buyerObj: b, buyerId: b?._id || '', buyerName: b?.name || '' }))}
+                    label="Buyer Name"
+                    entityLabel="Buyer"
+                    placeholder="Search buyer by name or phone..."
+                    required
+                  />
                 </div>
                 {/* Remarks */}
                 <div>
@@ -868,17 +913,69 @@ export default function FactoryPage() {
           {/* Table Header / Filters */}
           <div className="p-4 border-b border-outline-variant/20 flex flex-wrap gap-3 items-center bg-surface-container-low/50">
             <h3 className="font-headline text-xl font-semibold text-primary flex-1">Factory Records</h3>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search buyer..."
-                className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none text-sm w-48 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search buyer..."
+                  className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none text-sm w-48 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+
+              {/* Preset Date Filters */}
+              <div className="flex bg-surface-container rounded-full p-1 border border-outline-variant/30 hidden sm:flex">
+                {['Today', 'Last 7 Days', 'This Month'].map(preset => (
+                  <button key={preset}
+                    onClick={() => {
+                      setDatePreset(preset);
+                      const now = new Date();
+                      if (preset === 'Today') {
+                        const t = now.toISOString().slice(0, 10);
+                        setStartDate(t); setEndDate(t);
+                      } else if (preset === 'Last 7 Days') {
+                        const past = new Date(now); past.setDate(past.getDate() - 7);
+                        setStartDate(past.toISOString().slice(0, 10)); setEndDate(now.toISOString().slice(0, 10));
+                      } else if (preset === 'This Month') {
+                        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+                        setStartDate(first.toISOString().slice(0, 10)); setEndDate(now.toISOString().slice(0, 10));
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                      datePreset === preset ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => { setTempDates({ start: startDate, end: endDate }); setShowCustomDateModal(true); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                  datePreset === 'Custom' || (startDate && datePreset === '') ? 'border-primary text-primary bg-primary/5' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                {startDate && endDate && datePreset !== 'Today' && datePreset !== 'Last 7 Days' && datePreset !== 'This Month'
+                  ? `${new Date(startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${new Date(endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
+                  : 'Date'}
+              </button>
+
+              {(search || startDate) && (
+                <button
+                  onClick={() => { setSearch(''); setStartDate(''); setEndDate(''); setDatePreset(''); }}
+                  className="flex items-center gap-1 text-error hover:bg-error/10 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead>
-              <tr className="bg-surface border-y border-outline-variant/20">
+              <thead className="sticky top-0 z-10">
+              <tr className="bg-surface border-y border-outline-variant/20 shadow-sm">
                 {['Sl. No.', 'Date', 'Buyer Name', 'Total Qty', 'Less %', 'Less Qty', 'Net Qty', 'Rate (₹)', 'Total Amt (₹)', 'Advance (₹)', 'Paid (₹)', 'Due (₹)', 'Remarks', 'Action'].map(h => (
                   <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
                 ))}

@@ -4,9 +4,19 @@ const { validationResult } = require('express-validator');
 // GET /api/factory — list all with optional search/pagination
 exports.getAll = async (req, res) => {
   try {
-    const { search, sort = '-date', page = 1, limit = 50 } = req.query;
+    const { search, startDate, endDate, sort = '-date', page = 1, limit = 50 } = req.query;
     const filter = {};
     if (search) filter.buyerName = { $regex: search, $options: 'i' };
+
+    if (startDate || endDate) {
+      filter.date = {};
+      if (startDate) filter.date.$gte = new Date(startDate);
+      if (endDate) {
+        const ed = new Date(endDate);
+        ed.setUTCHours(23, 59, 59, 999);
+        filter.date.$lte = ed;
+      }
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const [items, total] = await Promise.all([
@@ -18,36 +28,48 @@ exports.getAll = async (req, res) => {
 };
 
 // GET /api/factory/stats
-exports.getStats = async (req, res) => {
+exports.getStats = async (req, res, next) => {
   try {
-    const all = await Factory.find({});
-    // safe() converts NaN / Infinity (from old-schema docs) to 0
-    const safe = (n) => (isNaN(n) || !isFinite(n)) ? 0 : n;
+    const result = await Factory.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRecords: { $sum: 1 },
+          totalFactoryAmount: {
+            $sum: {
+              $multiply: [
+                { $subtract: ['$totalQuantity', { $multiply: ['$totalQuantity', { $divide: ['$lessPercentage', 100] }] }] },
+                '$rate',
+              ],
+            },
+          },
+          totalAdvance: { $sum: '$advance' },
+        },
+      },
+    ]);
+    const base = result[0] || { totalRecords: 0, totalFactoryAmount: 0, totalAdvance: 0 };
 
-    let totalFactoryAmount = 0;
-    let totalAdvance = 0;
-    let totalPaid = 0;
-    let totalDue = 0;
-
-    all.forEach(s => {
-      totalFactoryAmount += safe(s.totalAmount);
-      totalAdvance     += safe(s.advance || 0);
-      totalPaid        += safe(s.totalPaid);
-      totalDue         += safe(s.due);
-    });
+    // Payments are embedded — still need to load for totals, but limit fields
+    const paymentAgg = await Factory.aggregate([
+      { $unwind: { path: '$payments', preserveNullAndEmptyArrays: true } },
+      { $group: { _id: null, totalPaid: { $sum: '$payments.amount' } } },
+    ]);
+    const totalPaid = paymentAgg[0]?.totalPaid || 0;
+    const totalDue  = Math.round((base.totalFactoryAmount - base.totalAdvance - totalPaid) * 100) / 100;
 
     res.json({
       success: true,
       data: {
-        totalRecords:     all.length,
-        totalFactoryAmount: parseFloat(totalFactoryAmount.toFixed(2)),
-        totalAdvance:     parseFloat(totalAdvance.toFixed(2)),
-        totalPaid:        parseFloat(totalPaid.toFixed(2)),
-        totalDue:         parseFloat(totalDue.toFixed(2)),
-      }
+        totalRecords:       base.totalRecords,
+        totalFactoryAmount: Math.round(base.totalFactoryAmount * 100) / 100,
+        totalAdvance:       Math.round(base.totalAdvance * 100) / 100,
+        totalPaid:          Math.round(totalPaid * 100) / 100,
+        totalDue,
+      },
     });
-  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+  } catch (err) { next(err); }
 };
+
 
 // GET /api/factory/:id
 exports.getById = async (req, res) => {

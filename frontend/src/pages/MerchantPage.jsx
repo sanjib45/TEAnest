@@ -14,7 +14,7 @@ import { merchantTxnAPI } from '../api/merchantTransactionApi';
 import toast from 'react-hot-toast';
 
 import ConfirmationModal from '../components/ConfirmationModal';
-import TransactionDetailModal from '../components/TransactionDetailModal';
+import MerchantProfileDrawer from '../components/merchant/MerchantProfileDrawer';
 import MerchantStatCards from '../components/merchant/MerchantStatCards';
 import MerchantTransactionForm from '../components/merchant/MerchantTransactionForm';
 import MerchantTableFilters from '../components/merchant/MerchantTableFilters';
@@ -24,14 +24,17 @@ import CustomDateRangeModal from '../components/merchant/CustomDateRangeModal';
 // ── Default empty form ────────────────────────────────────────────────────────
 const emptyForm = {
   merchantName: '',
+  merchantId:   '',
+  merchantObj:  null,
+  merchantPhone: '',
   teaType: '',
   transactionDate: new Date().toISOString().slice(0, 10),
   grossQty: '',
-  lessPercent: '0',
+  lessPercent: '',
   ratePerKg: '',
-  laborCount: '0',
-  laborChargePerWorker: '0',
-  advancePayment: '0',
+  laborCount: '',
+  laborChargePerWorker: '',
+  advancePayment: '',
   notes: '',
 };
 
@@ -65,8 +68,9 @@ export default function MerchantPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteId, setDeleteId]                   = useState(null);
 
-  // ── Detail drawer ─────────────────────────────────────────────────────────────
-  const [selectedTxnId, setSelectedTxnId] = useState(null);
+  // ── Detail drawer — stores merchant name (not txn ID) so the profile drawer
+  //    can load ALL transactions for that merchant in one view
+  const [selectedMerchant, setSelectedMerchant] = useState(null);
 
   // ── Live calculation (client-side, no round-trip) ─────────────────────────────
   const calc = useMemo(() => merchantTxnAPI.compute(form), [form]);
@@ -183,6 +187,8 @@ export default function MerchantPage() {
       // Send only raw inputs; the backend recalculates derived fields
       const payload = {
         merchantName:        form.merchantName.trim(),
+        merchantId:          form.merchantId || undefined,
+        merchantPhone:       form.merchantPhone?.trim() || undefined,
         teaType:             form.teaType,
         transactionDate:     form.transactionDate,
         grossQty:            Number(form.grossQty),
@@ -225,6 +231,9 @@ export default function MerchantPage() {
   const handleEdit = (item) => {
     setForm({
       merchantName:         item.merchantName,
+      merchantId:           item.merchant || '',
+      merchantPhone:        '',
+      merchantObj:          item.merchant ? { _id: item.merchant, name: item.merchantName, phone: '' } : null,
       teaType:              item.teaType,
       transactionDate:      item.transactionDate?.slice(0, 10) || '',
       grossQty:             String(item.grossQty),
@@ -324,7 +333,7 @@ export default function MerchantPage() {
         <MerchantTransactionTable
           items={items}
           loading={loading}
-          onViewDetails={setSelectedTxnId}
+          onViewDetails={(item) => setSelectedMerchant(item.merchantName)}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
@@ -348,12 +357,12 @@ export default function MerchantPage() {
         onCancel={() => { setShowDeleteConfirm(false); setDeleteId(null); }}
       />
 
-      {/* ── Transaction Detail Drawer ── */}
-      {selectedTxnId && (
-        <TransactionDetailModal
-          txnId={selectedTxnId}
-          onClose={() => {
-            setSelectedTxnId(null);
+      {/* ── Merchant Profile Drawer ── */}
+      {selectedMerchant && (
+        <MerchantProfileDrawer
+          merchantName={selectedMerchant}
+          onClose={() => setSelectedMerchant(null)}
+          onDataChange={() => {
             fetchItems();
             fetchStats();
           }}

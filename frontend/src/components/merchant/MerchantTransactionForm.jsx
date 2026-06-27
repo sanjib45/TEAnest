@@ -11,7 +11,11 @@
  *  onCancel      – () => void
  */
 
+import SearchableSelect from '../SearchableSelect';
+import { merchantMasterAPI } from '../../api/merchantMasterApi';
+
 const TEA_TYPES = ['Green Tea', 'CTC', 'Other'];
+
 
 // ── Shared primitive components ────────────────────────────────────────────────
 function InputField({ label, name, type = 'text', value, onChange, placeholder, required, readOnly, step, min }) {
@@ -68,17 +72,53 @@ export default function MerchantTransactionForm({ form, editing, calc, submittin
 
       <form id="merchant-transaction-form" onSubmit={onSubmit} noValidate>
         {/* ── Row 1: Merchant info ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <InputField
-            label="Merchant Name"
-            name="merchantName"
-            value={form.merchantName}
-            onChange={handleChange}
-            placeholder="e.g. Ravi Tea Traders"
-            required
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Merchant selector */}
+          <div className="lg:col-span-2">
+            <SearchableSelect
+              api={merchantMasterAPI}
+              value={form.merchantObj || null}
+              onChange={(m) => {
+                onFieldChange('merchantObj', m);
+                onFieldChange('merchantId', m?._id || '');
+                onFieldChange('merchantName', m?.name || '');
+                onFieldChange('merchantPhone', m?.phone || '');
+              }}
+              label="Merchant"
+              entityLabel="Merchant"
+              placeholder="Search by name or phone..."
+              required
+            />
+          </div>
 
-          {/* Tea Type select */}
+          {/* Phone — visible field, triggers findOrCreate lookup */}
+          <div>
+            <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">
+              Phone Number
+            </label>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[17px]">call</span>
+              <input
+                id="field-merchantPhone"
+                name="merchantPhone"
+                type="tel"
+                value={form.merchantPhone || ''}
+                onChange={handleChange}
+                placeholder="e.g. 9876543210"
+                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all"
+              />
+            </div>
+            {form.merchantPhone && !form.merchantId && (
+              <p className="text-xs text-orange-500 mt-1">
+                ⚠ Select merchant from dropdown to link
+              </p>
+            )}
+            {form.merchantId && form.merchantPhone && (
+              <p className="text-xs text-green-600 mt-1">✓ Linked to merchant record</p>
+            )}
+          </div>
+
+          {/* Tea Type */}
           <div>
             <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">
               Tea Type *
@@ -97,7 +137,10 @@ export default function MerchantTransactionForm({ form, editing, calc, submittin
               ))}
             </select>
           </div>
+        </div>
 
+        {/* ── Row 1b: Date ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <InputField
             label="Transaction Date"
             name="transactionDate"

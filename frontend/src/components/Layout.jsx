@@ -26,10 +26,10 @@ export default function Layout() {
         
         <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-full overflow-hidden flex justify-center items-start shadow-sm bg-white border border-white shrink-0">
-            <img src="/logo.png" alt="TEAnest Logo" className="h-[115%] max-w-none -mt-[10%]" />
+            <img src="/logo.png" alt="DOOARS GREEN Logo" className="h-[115%] max-w-none -mt-[10%]" />
           </div>
           <span className="font-headline font-bold text-primary text-xl tracking-tight">
-            TEAnest
+            DOOARS GREEN
           </span>
         </a>
       </header>

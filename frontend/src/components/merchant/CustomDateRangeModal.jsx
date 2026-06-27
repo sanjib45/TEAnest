@@ -10,6 +10,7 @@
  *  onCancel    – () => void  (closes without applying)
  */
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function CustomDateRangeModal({ isOpen, tempDates, onChange, onApply, onReset, onCancel }) {
   // Close on Escape
@@ -21,7 +22,7 @@ export default function CustomDateRangeModal({ isOpen, tempDates, onChange, onAp
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
@@ -81,6 +82,7 @@ export default function CustomDateRangeModal({ isOpen, tempDates, onChange, onAp
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
