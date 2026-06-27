@@ -125,33 +125,21 @@ exports.getDashboard = async (req, res) => {
       return { ...obj, netQty, totalAmount, totalPaid: paid, due };
     });
 
-    // ── Top due buyers from enriched factory ──────────────────────────────
-    const allFactory = await Factory.find({ 'payments.0': { $exists: true } }).select('buyerName date totalQuantity lessPercentage rate advance payments');
+    // ── Top due buyers — single correct pass over ALL factory records ───────
+    const allFactory = await Factory.find()
+      .select('buyerName totalQuantity lessPercentage rate advance payments')
+      .lean();
+
     const buyerDueMap = {};
     allFactory.forEach(item => {
-      const tq  = item.totalQuantity  || 0;
-      const lp  = item.lessPercentage || 0;
-      const r   = item.rate           || 0;
-      const adv = item.advance        || 0;
-      const nq  = tq - (tq * lp / 100);
-      const ta  = nq * r;
+      const tq   = item.totalQuantity  || 0;
+      const lp   = item.lessPercentage || 0;
+      const r    = item.rate           || 0;
+      const adv  = item.advance        || 0;
+      const nq   = tq - (tq * lp / 100);
+      const ta   = nq * r;
       const paid = (item.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-      const due  = ta - adv - paid;
-      if (due > 0) {
-        if (!buyerDueMap[item.buyerName]) buyerDueMap[item.buyerName] = 0;
-        buyerDueMap[item.buyerName] += due;
-      }
-    });
-    // Also include factory records without payments
-    const allFactoryNoPay = await Factory.find({ 'payments': { $size: 0 } }).select('buyerName totalQuantity lessPercentage rate advance');
-    allFactoryNoPay.forEach(item => {
-      const tq  = item.totalQuantity  || 0;
-      const lp  = item.lessPercentage || 0;
-      const r   = item.rate           || 0;
-      const adv = item.advance        || 0;
-      const nq  = tq - (tq * lp / 100);
-      const ta  = nq * r;
-      const due = ta - adv;
+      const due  = Math.round((ta - adv - paid) * 100) / 100;
       if (due > 0) {
         if (!buyerDueMap[item.buyerName]) buyerDueMap[item.buyerName] = 0;
         buyerDueMap[item.buyerName] += due;
