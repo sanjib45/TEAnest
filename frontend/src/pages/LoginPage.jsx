@@ -6,9 +6,9 @@ import { authAPI } from '../api/authApi';
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPass, setShowPass] = useState(false);
-  const [form, setForm] = useState({ 
-    phone: localStorage.getItem('savedPhone') || '', 
-    password: localStorage.getItem('savedPassword') || '' 
+  const [form, setForm] = useState({
+    phone: localStorage.getItem('savedPhone') || '',
+    password: localStorage.getItem('savedPassword') || ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <div className="w-px h-3 bg-outline-variant" />
             <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Session v0.1</span>
           </div>
-        </div> }    
+        </div>}
       </main>
     </div>
   );

@@ -1,17 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { factoryAPI } from '../api/factoryApi';
+import { buyerAPI } from '../api/buyerApi';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../components/ConfirmationModal';
+import SearchableSelect from '../components/SearchableSelect';
+import CustomDateRangeModal from '../components/merchant/CustomDateRangeModal';
+import BuyerHistoryDrawer from '../components/factory/BuyerHistoryDrawer';
 
 const PAYMENT_MODES = ['Cash', 'Online', 'Cheque'];
 
 const getEmptyForm = () => ({
   date:           new Date().toISOString().slice(0, 10),
   buyerName:      '',
+  buyerId:        '',
+  buyerObj:       null,
   totalQuantity:  '',
-  lessPercentage: '2',
+  lessPercentage: '',
   rate:           '',
-  advance:        '0',
+  advance:        '',
   dueDate:        '',
   remarks:        '',
 });
@@ -74,8 +81,8 @@ function PaymentModal({ sale, onClose, onSaved }) {
     setDeleteId(null);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-surface w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white">
@@ -163,7 +170,8 @@ function PaymentModal({ sale, onClose, onSaved }) {
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -336,8 +344,8 @@ function CsvImportModal({ onClose, onImported }) {
   const validCount   = rows.filter(r => r._errors.length === 0).length;
   const invalidCount = rows.filter(r => r._errors.length >  0).length;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white dark:bg-surface w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white flex items-center justify-between">
@@ -476,132 +484,11 @@ function CsvImportModal({ onClose, onImported }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
-// ── Buyer History Drawer ─────────────────────────────────────
-function BuyerHistoryDrawer({ buyerName, items, onClose, onPaymentClick }) {
-  const records = items
-    .filter(it => it.buyerName === buyerName)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-  // Aggregate totals
-  let totalFactory = 0, totalAdvance = 0, totalPaid = 0;
-  records.forEach(r => {
-    const v = calcVirtuals(r.totalQuantity, r.lessPercentage, r.rate, r.advance, r.payments);
-    totalFactory   += v.totalAmount;
-    totalAdvance += (r.advance || 0);
-    totalPaid    += v.totalPaid;
-  });
-  const totalDue = totalFactory - totalAdvance - totalPaid;
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
-      {/* Drawer */}
-      <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-2xl bg-white dark:bg-surface shadow-2xl flex flex-col animate-slide-in-right">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold">
-                {buyerName.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">{buyerName}</h3>
-                <p className="text-white/70 text-sm">{records.length} sale record{records.length !== 1 ? 's' : ''}</p>
-              </div>
-            </div>
-            <button onClick={onClose} className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-all">
-              <span className="material-symbols-outlined">close</span>
-            </button>
-          </div>
-          {/* Summary strip */}
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { label: 'Total Factory',  value: `₹${fmt(totalFactory)}` },
-              { label: 'Advance',      value: `₹${fmt(totalAdvance)}` },
-              { label: 'Received',     value: `₹${fmt(totalPaid)}` },
-              { label: 'Due',          value: `₹${fmt(totalDue)}`, red: totalDue > 0 },
-            ].map(s => (
-              <div key={s.label} className={`rounded-xl p-2.5 ${s.red ? 'bg-red-500/70' : 'bg-white/15'}`}>
-                <p className="text-white/65 text-xs">{s.label}</p>
-                <p className="text-white font-bold text-sm">{s.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Record list */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {records.length === 0 ? (
-            <p className="text-center py-12 text-on-surface-variant">No records found for this buyer.</p>
-          ) : records.map((item, idx) => {
-            const v = calcVirtuals(item.totalQuantity, item.lessPercentage, item.rate, item.advance, item.payments);
-            const isDue = v.due > 0;
-            return (
-              <div key={item._id} className="rounded-2xl border border-outline-variant/30 bg-surface-container-low overflow-hidden">
-                {/* Row header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-surface-container border-b border-outline-variant/20">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded">#{idx + 1}</span>
-                    <span className="font-semibold text-sm text-on-surface">{new Date(item.date).toLocaleDateString('en-IN')}</span>
-                    {item.remarks && <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">{item.remarks}</span>}
-                  </div>
-                  <button onClick={() => onPaymentClick(item)}
-                    className="flex items-center gap-1 text-xs px-3 py-1.5 bg-green-50 text-green-700 rounded-full hover:bg-green-100 transition-colors font-semibold">
-                    <span className="material-symbols-outlined text-sm">payments</span>
-                    Add Payment
-                  </button>
-                </div>
-                {/* Qty & Amount grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 divide-x sm:divide-x divide-outline-variant/20">
-                  {[
-                    { label: 'Total Qty',   value: `${fmtN(item.totalQuantity)} kg` },
-                    { label: `Net Qty (${fmtN(item.lessPercentage)}% less)`, value: `${fmtN(v.netQuantity)} kg` },
-                    { label: `Rate`,        value: `₹${fmt(item.rate)}/kg` },
-                    { label: 'Total Amt',   value: `₹${fmt(v.totalAmount)}`, bold: true },
-                  ].map(c => (
-                    <div key={c.label} className="px-3 py-2.5 text-center">
-                      <p className="text-xs text-on-surface-variant">{c.label}</p>
-                      <p className={`text-sm ${c.bold ? 'font-bold text-primary' : 'font-medium text-on-surface'}`}>{c.value}</p>
-                    </div>
-                  ))}
-                </div>
-                {/* Payment summary */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-surface-container-lowest/50">
-                  <div className="flex gap-4 text-xs">
-                    <span className="text-on-surface-variant">Advance: <strong className="text-secondary">₹{fmt(item.advance)}</strong></span>
-                    <span className="text-on-surface-variant">Paid: <strong className="text-green-600">₹{fmt(v.totalPaid)}</strong></span>
-                    {item.payments.length > 0 && (
-                      <span className="text-on-surface-variant">
-                        {item.payments.length} payment{item.payments.length > 1 ? 's' : ''}
-                        {' '}({item.payments.map(p => p.mode).join(', ')})
-                      </span>
-                    )}
-                  </div>
-                  <span className={`font-bold text-sm ${isDue ? 'text-red-500' : 'text-green-600'}`}>
-                    {isDue ? `Due: ₹${fmt(v.due)}` : '✓ Clear'}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-outline-variant/20 bg-surface-container-low/50 flex justify-end">
-          <button onClick={onClose}
-            className="px-6 py-2.5 border border-outline-variant rounded-full text-sm font-medium hover:bg-surface-container transition-all">
-            Close
-          </button>
-        </div>
-      </div>
-    </>
-  );
-}
 
 // ── Main FactoryPage ──────────────────────────────────────────
 export default function FactoryPage() {
@@ -617,6 +504,13 @@ export default function FactoryPage() {
   const [showCsvImport, setShowCsvImport] = useState(false); // for CSV import modal
   const [buyerHistory, setBuyerHistory]   = useState(null);  // buyer name string for history drawer
 
+  // ── Date Filter state ──
+  const [datePreset, setDatePreset] = useState('');
+  const [startDate, setStartDate]   = useState('');
+  const [endDate, setEndDate]       = useState('');
+  const [showCustomDateModal, setShowCustomDateModal] = useState(false);
+  const [tempDates, setTempDates] = useState({ start: '', end: '' });
+
   // live preview virtuals while filling form
   const preview = calcVirtuals(form.totalQuantity, form.lessPercentage, form.rate, form.advance, []);
 
@@ -626,11 +520,13 @@ export default function FactoryPage() {
     try {
       const params = {};
       if (search) params.search = search;
+      if (startDate) params.startDate = startDate;
+      if (endDate)   params.endDate   = endDate;
       const { data } = await factoryAPI.getAll(params);
       setItems(data.data);
     } catch { toast.error('Failed to load factory data'); }
     setLoading(false);
-  }, [search]);
+  }, [search, startDate, endDate]);
 
   const fetchStats = async () => {
     try { const { data } = await factoryAPI.getStats(); setStats(data.data); } catch {}
@@ -655,6 +551,8 @@ export default function FactoryPage() {
     setForm({
       date:           item.date?.slice(0, 10) || '',
       buyerName:      item.buyerName,
+      buyerId:        item.buyer || '',
+      buyerObj:       item.buyer ? { _id: item.buyer, name: item.buyerName, phone: '' } : null,
       totalQuantity:  item.totalQuantity,
       lessPercentage: item.lessPercentage,
       rate:           item.rate,
@@ -676,13 +574,32 @@ export default function FactoryPage() {
 
   return (
     <div className="relative">
+      {/* Date Modal */}
+      <CustomDateRangeModal
+        isOpen={showCustomDateModal}
+        onClose={() => setShowCustomDateModal(false)}
+        tempDates={tempDates}
+        setTempDates={setTempDates}
+        onApply={() => {
+          setStartDate(tempDates.start);
+          setEndDate(tempDates.end);
+          setDatePreset('Custom');
+          setShowCustomDateModal(false);
+        }}
+        onClear={() => {
+          setStartDate('');
+          setEndDate('');
+          setDatePreset('');
+          setShowCustomDateModal(false);
+        }}
+      />
       {/* Buyer History Drawer */}
       {buyerHistory && (
         <BuyerHistoryDrawer
           buyerName={buyerHistory}
-          items={items}
           onClose={() => setBuyerHistory(null)}
-          onPaymentClick={(item) => { setBuyerHistory(null); setPaymentSale(item); }}
+          onPaymentClick={(item) => setPaymentSale(item)}
+          onDataChange={() => { fetchItems(); fetchStats(); }}
         />
       )}
       {/* CSV Import Modal */}
@@ -772,11 +689,17 @@ export default function FactoryPage() {
                   <input name="date" type="date" value={form.date} onChange={handleChange} required
                     className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
                 </div>
-                {/* Buyer Name */}
+                {/* Buyer Name (SearchableSelect) */}
                 <div className="lg:col-span-2">
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Buyer Name *</label>
-                  <input name="buyerName" type="text" value={form.buyerName} onChange={handleChange} required placeholder="e.g. Bisheshwar Roy"
-                    className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
+                  <SearchableSelect
+                    api={buyerAPI}
+                    value={form.buyerObj || null}
+                    onChange={(b) => setForm(f => ({ ...f, buyerObj: b, buyerId: b?._id || '', buyerName: b?.name || '' }))}
+                    label="Buyer Name"
+                    entityLabel="Buyer"
+                    placeholder="Search buyer by name or phone..."
+                    required
+                  />
                 </div>
                 {/* Remarks */}
                 <div>
@@ -868,17 +791,69 @@ export default function FactoryPage() {
           {/* Table Header / Filters */}
           <div className="p-4 border-b border-outline-variant/20 flex flex-wrap gap-3 items-center bg-surface-container-low/50">
             <h3 className="font-headline text-xl font-semibold text-primary flex-1">Factory Records</h3>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search buyer..."
-                className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none text-sm w-48 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search buyer..."
+                  className="pl-9 pr-4 py-2 bg-surface-container rounded-full border-none text-sm w-48 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+              </div>
+
+              {/* Preset Date Filters */}
+              <div className="flex bg-surface-container rounded-full p-1 border border-outline-variant/30 hidden sm:flex">
+                {['Today', 'Last 7 Days', 'This Month'].map(preset => (
+                  <button key={preset}
+                    onClick={() => {
+                      setDatePreset(preset);
+                      const now = new Date();
+                      if (preset === 'Today') {
+                        const t = now.toISOString().slice(0, 10);
+                        setStartDate(t); setEndDate(t);
+                      } else if (preset === 'Last 7 Days') {
+                        const past = new Date(now); past.setDate(past.getDate() - 7);
+                        setStartDate(past.toISOString().slice(0, 10)); setEndDate(now.toISOString().slice(0, 10));
+                      } else if (preset === 'This Month') {
+                        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+                        setStartDate(first.toISOString().slice(0, 10)); setEndDate(now.toISOString().slice(0, 10));
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                      datePreset === preset ? 'bg-white text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => { setTempDates({ start: startDate, end: endDate }); setShowCustomDateModal(true); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
+                  datePreset === 'Custom' || (startDate && datePreset === '') ? 'border-primary text-primary bg-primary/5' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                {startDate && endDate && datePreset !== 'Today' && datePreset !== 'Last 7 Days' && datePreset !== 'This Month'
+                  ? `${new Date(startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} - ${new Date(endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
+                  : 'Date'}
+              </button>
+
+              {(search || startDate) && (
+                <button
+                  onClick={() => { setSearch(''); setStartDate(''); setEndDate(''); setDatePreset(''); }}
+                  className="flex items-center gap-1 text-error hover:bg-error/10 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead>
-              <tr className="bg-surface border-y border-outline-variant/20">
+              <thead className="sticky top-0 z-10">
+              <tr className="bg-surface border-y border-outline-variant/20 shadow-sm">
                 {['Sl. No.', 'Date', 'Buyer Name', 'Total Qty', 'Less %', 'Less Qty', 'Net Qty', 'Rate (₹)', 'Total Amt (₹)', 'Advance (₹)', 'Paid (₹)', 'Due (₹)', 'Remarks', 'Action'].map(h => (
                   <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
                 ))}
@@ -932,10 +907,19 @@ export default function FactoryPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex gap-2">
-                          <button onClick={() => setPaymentSale(item)} title="Payments"
-                            className="px-3 py-1.5 border border-[#3b4b59] text-[#3b4b59] rounded-lg text-xs font-semibold hover:bg-[#3b4b59]/5 transition-colors whitespace-nowrap">
-                            Payments
-                          </button>
+                          {isDue ? (
+                            <button onClick={() => setPaymentSale(item)} title="Add Payment"
+                              className="px-3 py-1.5 border border-[#3b4b59] text-[#3b4b59] rounded-lg text-xs font-semibold hover:bg-[#3b4b59]/5 transition-colors whitespace-nowrap flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">payments</span>
+                              Payments
+                            </button>
+                          ) : (
+                            <button onClick={() => setBuyerHistory(item.buyerName)} title="View Details"
+                              className="px-3 py-1.5 border border-green-600 text-green-700 rounded-lg text-xs font-semibold hover:bg-green-50 transition-colors whitespace-nowrap flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">check_circle</span>
+                              Details
+                            </button>
+                          )}
                           <button onClick={() => handleEdit(item)} title="Edit"
                             className="px-3 py-1.5 border border-secondary text-secondary rounded-lg text-xs font-semibold hover:bg-secondary/5 transition-colors whitespace-nowrap">
                             Edit

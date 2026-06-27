@@ -33,7 +33,7 @@ export default function Header() {
         {/* Logo */}
         <div className="font-headline text-headline-md font-bold text-primary flex items-center gap-2">
           <span className="material-symbols-outlined text-3xl">eco</span>
-          TEAnest
+          DOOARS GREEN
         </div>
 
         {/* Desktop Nav */}

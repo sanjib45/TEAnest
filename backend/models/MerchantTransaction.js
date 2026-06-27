@@ -22,10 +22,16 @@ const merchantTransactionSchema = new mongoose.Schema(
       uppercase: true,
       index: true,
     },
+    merchant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Merchant',
+      index: true,
+    },
     merchantName: {
       type: String,
       required: [true, 'Merchant name is required'],
       trim: true,
+      index: true,
     },
     teaType: {
       type: String,
@@ -101,19 +107,43 @@ merchantTransactionSchema.pre('save', async function (next) {
   next();
 });
 
+/**
+ * pre('findOneAndUpdate') — fires for findByIdAndUpdate calls.
+ *
+ * BUG FIXED: the old version called computeFields(data) where `data` was only
+ * the $set portion of the update — missing fields like grossQty would be
+ * undefined → coerced to 0 → all derived amounts became 0 → balance = 0 → "Paid".
+ *
+ * FIX: always merge the EXISTING document with the incoming update first,
+ * so computeFields always has every field it needs.
+ */
 merchantTransactionSchema.pre('findOneAndUpdate', async function (next) {
-  const update = this.getUpdate();
-  const data = update.$set || update;
-  const calc = computeFields(data);
-  Object.assign(data, calc);
+  try {
+    const update = this.getUpdate();
+    // Mongoose wraps plain objects in $set; support both forms
+    const data = (update && update.$set) ? update.$set : update;
+    if (!data) return next();
 
-  const docToUpdate = await this.model.findOne(this.getQuery());
-  if (docToUpdate) {
+    // Fetch the current document so we can fill in any fields not present
+    // in the partial update (prevents 0-value computation)
+    const docToUpdate = await this.model.findOne(this.getQuery()).lean();
+    if (!docToUpdate) return next();
+
+    // Merge: existing values as base, incoming update as override
+    const merged = { ...docToUpdate, ...data };
+    const calc = computeFields(merged);
+
+    // Write recalculated fields back into the $set so MongoDB stores them
+    Object.assign(data, calc);
+
+    // Recompute balance = finalPayable − all payments recorded so far
     const MerchantPayment = mongoose.model('MerchantPayment');
-    const payments = await MerchantPayment.find({ transaction: docToUpdate._id });
+    const payments = await MerchantPayment.find({ transaction: docToUpdate._id }).lean();
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const updatedFinalPayable = calc.finalPayable !== undefined ? calc.finalPayable : docToUpdate.finalPayable;
-    data.balance = Math.round((updatedFinalPayable - totalPaid) * 100) / 100;
+    data.balance = round2(calc.finalPayable - totalPaid);
+  } catch (e) {
+    // Never block the update — log and continue
+    console.error('[MerchantTransaction pre(findOneAndUpdate)]', e.message);
   }
 
   next();
@@ -149,5 +179,9 @@ merchantTransactionSchema.methods._recalculate = function () {
 
 // Expose helper for controller use (create/update without save)
 merchantTransactionSchema.statics.computeFields = computeFields;
+
+// ── Compound indexes for fast queries ─────────────────────────────────────────
+merchantTransactionSchema.index({ merchant: 1, transactionDate: -1 });
+merchantTransactionSchema.index({ transactionDate: -1 });
 
 module.exports = mongoose.model('MerchantTransaction', merchantTransactionSchema);

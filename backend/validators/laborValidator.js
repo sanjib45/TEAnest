@@ -1,21 +1,22 @@
 const { body } = require('express-validator');
 
-const ROLES = ['Plucker', 'Factory Worker', 'Supervisor', 'Maintenance', 'Other'];
-const STATUSES = ['Active', 'Inactive', 'On Leave'];
+const ROLES           = ['Plucker', 'Factory Worker', 'Supervisor', 'Maintenance', 'Other'];
+const PAYMENT_STATUSES = ['Due', 'Paid'];
 
 exports.createRules = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('role').notEmpty().isIn(ROLES).withMessage('Invalid role'),
-  body('contact').optional().trim(),
-  body('dailyWage').isFloat({ min: 0 }).withMessage('Daily wage must be positive'),
+  body('laborCharge').isFloat({ min: 0 }).withMessage('Labor charge must be a positive number'),
   body('joinDate').optional().isISO8601().withMessage('Valid join date required'),
-  body('status').optional().isIn(STATUSES).withMessage('Invalid status'),
+  body('paymentStatus').optional().isIn(PAYMENT_STATUSES).withMessage('Invalid payment status'),
+  body('notes').optional().trim().isLength({ max: 500 }),
 ];
 
 exports.updateRules = [
   body('name').optional().trim().notEmpty(),
   body('role').optional().isIn(ROLES),
-  body('contact').optional().trim(),
-  body('dailyWage').optional().isFloat({ min: 0 }),
-  body('status').optional().isIn(STATUSES),
+  body('laborCharge').optional().isFloat({ min: 0 }),
+  body('joinDate').optional().isISO8601(),
+  body('paymentStatus').optional().isIn(PAYMENT_STATUSES),
+  body('notes').optional().trim().isLength({ max: 500 }),
 ];

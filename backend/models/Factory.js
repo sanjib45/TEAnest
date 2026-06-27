@@ -8,15 +8,19 @@ const paymentSchema = new mongoose.Schema({
 
 const factorySchema = new mongoose.Schema({
   date:            { type: Date, default: Date.now },
-  buyerName:       { type: String, required: [true, 'Buyer name is required'], trim: true },
-  totalQuantity:   { type: Number, required: [true, 'Total quantity is required'], min: 0 },   // TOTAL QNTY.
-  lessPercentage:  { type: Number, min: 0, default: 0 },                                        // LESS PERCENTAGE
-  rate:            { type: Number, required: [true, 'Rate is required'], min: 0 },               // RATE (₹/kg)
-  advance:         { type: Number, default: 0, min: 0 },                                        // ADVANCE
-  payments:        { type: [paymentSchema], default: [] },                                       // Payment history
-  dueDate:         { type: Date },                                                               // DUE date
-  remarks:         { type: String, trim: true, maxlength: 500 },                                // REMARKS
+  buyer:           { type: mongoose.Schema.Types.ObjectId, ref: 'Buyer', index: true },
+  buyerName:       { type: String, required: [true, 'Buyer name is required'], trim: true, index: true },
+  totalQuantity:   { type: Number, required: [true, 'Total quantity is required'], min: 0 },
+  lessPercentage:  { type: Number, min: 0, default: 0 },
+  rate:            { type: Number, required: [true, 'Rate is required'], min: 0 },
+  advance:         { type: Number, default: 0, min: 0 },
+  payments:        { type: [paymentSchema], default: [] },
+  dueDate:         { type: Date },
+  remarks:         { type: String, trim: true, maxlength: 500 },
 }, { timestamps: true });
+
+factorySchema.index({ buyer: 1, date: -1 });
+factorySchema.index({ date: -1 });
 
 // ── Virtuals ────────────────────────────────────────────────
 // All virtuals use safe fallbacks (|| 0, || []) so that OLD MongoDB
