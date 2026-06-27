@@ -6,9 +6,9 @@ import { authAPI } from '../api/authApi';
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPass, setShowPass] = useState(false);
-  const [form, setForm] = useState({ 
-    phone: localStorage.getItem('savedPhone') || '', 
-    password: localStorage.getItem('savedPassword') || '' 
+  const [form, setForm] = useState({
+    phone: localStorage.getItem('savedPhone') || '',
+    password: localStorage.getItem('savedPassword') || ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -67,8 +67,8 @@ export default function LoginPage() {
         <div className="glass-panel animate-fade-up w-full max-w-[440px] rounded-3xl p-8 md:p-12 relative overflow-hidden leaf-pattern">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-32 h-32 rounded-full overflow-hidden flex justify-center items-center shadow-2xl shadow-primary/20 bg-white border-4 border-white mb-6 p-1">
-              <img src="/logo.png" alt="DOOARS GREEN Logo" className="w-full h-full object-contain" />
+            <div className="w-32 h-32 rounded-full overflow-hidden flex justify-center items-start shadow-2xl shadow-primary/20 bg-white border-4 border-white mb-6">
+              <img src="/logo.png" alt="TEAnest Logo" className="h-[120%] max-w-none -mt-[10%]" />
             </div>
             <h1 className="font-headline text-3xl font-bold text-primary text-center">Welcome Back</h1>
             <p className="text-on-surface-variant text-sm mt-1 font-semibold tracking-widest uppercase">Sign in to your estate</p>
@@ -146,7 +146,7 @@ export default function LoginPage() {
             <div className="w-px h-3 bg-outline-variant" />
             <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Session v0.1</span>
           </div>
-        </div> }    
+        </div>}
       </main>
     </div>
   );
