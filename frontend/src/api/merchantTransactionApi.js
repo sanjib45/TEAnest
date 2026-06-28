@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const BASE_URL = 'http://localhost:5000/api';
+
 const API = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -41,10 +43,42 @@ export const merchantTxnAPI = {
 
     return { lessQty, netQty, grossAmount, totalLaborCharges, netPayable, finalPayable, balance };
   },
+
   // ── Payments sub-resource ─────────────────────────────────────────────────
-  getPayments:    (txnId)         => API.get(`/merchant-transactions/${txnId}/payments`),
-  addPayment:     (txnId, data)   => API.post(`/merchant-transactions/${txnId}/payments`, data),
-  deletePayment:  (txnId, payId)  => API.delete(`/merchant-transactions/${txnId}/payments/${payId}`),
+  getPayments:   (txnId)        => API.get(`/merchant-transactions/${txnId}/payments`),
+  addPayment:    (txnId, data)  => API.post(`/merchant-transactions/${txnId}/payments`, data),
+  deletePayment: (txnId, payId) => API.delete(`/merchant-transactions/${txnId}/payments/${payId}`),
+
+  // ── Invoice endpoints ─────────────────────────────────────────────────────
+  /**
+   * Returns a direct URL to the PDF invoice (opens/downloads in browser).
+   * Use: window.open(merchantTxnAPI.invoiceUrl(merchantName, startDate, endDate))
+   */
+  invoiceUrlByDate: (merchantName, startDate, endDate) => {
+    const token = localStorage.getItem('token') || '';
+    return `${BASE_URL}/merchant-transactions/invoice/by-merchant-date?merchantName=${encodeURIComponent(merchantName)}&startDate=${startDate}&endDate=${endDate}&token=${token}`;
+  },
+
+  /**
+   * Fetches the HTML preview of a merchant+date range invoice.
+   * Returns raw HTML string.
+   */
+  getInvoiceHtmlByDate: (merchantName, startDate, endDate) =>
+    API.get('/merchant-transactions/invoice/by-merchant-date', {
+      params: { merchantName, startDate, endDate, format: 'html' },
+      responseType: 'text',
+    }),
+
+  /**
+   * Fetches a single-transaction invoice as a blob URL.
+   */
+  getInvoiceBlob: async (txnId) => {
+    const res = await API.get(`/merchant-transactions/${txnId}/invoice`, {
+      responseType: 'blob',
+    });
+    return URL.createObjectURL(res.data);
+  },
 };
 
 export default API;
+

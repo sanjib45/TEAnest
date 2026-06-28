@@ -5,8 +5,9 @@
  * slides in from the right and shows:
  *
  *  1. Merchant-level summary (total qty, total gross amount, outstanding balance)
- *  2. All transactions for that merchant, sorted newest-first
- *  3. Each transaction card is expandable → shows quantity/financial breakdown
+ *  2. Invoice Download section — pick a date, preview invoice, download PDF
+ *  3. All transactions for that merchant, sorted newest-first
+ *  4. Each transaction card is expandable → shows quantity/financial breakdown
  *     + inline payment history + "Record Payment" form
  *
  * Props:
@@ -15,12 +16,14 @@
  *   onDataChange  – fn()   — called after any payment add/delete (so parent
  *                            can refresh the table and stats)
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { merchantTxnAPI } from '../../api/merchantTransactionApi';
 import { merchantMasterAPI } from '../../api/merchantMasterApi';
 import toast from 'react-hot-toast';
 import ConfirmationModal from '../ConfirmationModal';
+
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n) =>
@@ -37,6 +40,250 @@ const fmtDate = (d) =>
   });
 
 const PAYMENT_MODES = ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Other'];
+
+// ── Invoice Download Section ──────────────────────────────────────────────────
+function InvoiceSection({ merchantName }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate]     = useState(today);
+  const [checking, setChecking]   = useState(false);
+  const [txnCount, setTxnCount]         = useState(null);   // null = unchecked
+  const [noData, setNoData]             = useState(false);
+  const [previewing, setPreviewing]     = useState(false);
+  const [previewHtml, setPreviewHtml]   = useState('');
+  const [downloading, setDownloading]   = useState(false);
+  const iframeRef = useRef(null);
+
+  // Whenever date changes reset state
+  useEffect(() => {
+    setTxnCount(null);
+    setNoData(false);
+  }, [startDate, endDate]);
+
+  // ── Check how many transactions exist for that date ───────────────────────
+  const handleCheck = async () => {
+    setChecking(true);
+    setNoData(false);
+    setTxnCount(null);
+    try {
+      const { data: res } = await merchantTxnAPI.getAll({
+        merchantName,
+        startDate,
+        endDate,
+        limit:     500,
+      });
+      if (!res.data || res.data.length === 0) {
+        setNoData(true);
+      } else {
+        setTxnCount(res.data.length);
+      }
+    } catch {
+      toast.error('Failed to check transactions');
+    }
+    setChecking(false);
+  };
+
+  // ── Preview: fetch HTML from backend and show in iframe modal ─────────────
+  const handlePreview = async () => {
+    try {
+      const { data: html } = await merchantTxnAPI.getInvoiceHtmlByDate(merchantName, startDate, endDate);
+      setPreviewHtml(html);
+      setPreviewing(true);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Preview failed';
+      toast.error(msg);
+    }
+  };
+
+  // Write HTML into iframe once it mounts
+  useEffect(() => {
+    if (previewing && iframeRef.current && previewHtml) {
+      const doc = iframeRef.current.contentDocument || iframeRef.current.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(previewHtml);
+        doc.close();
+      }
+    }
+  }, [previewing, previewHtml]);
+
+  // ── Download PDF ──────────────────────────────────────────────────────────
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/merchant-transactions/invoice/by-merchant-date?merchantName=${encodeURIComponent(merchantName)}&startDate=${startDate}&endDate=${endDate}`,
+        { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: 'Download failed' }));
+        throw new Error(err.message);
+      }
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      const safeStart = startDate.replace(/-/g,'');
+      const safeEnd   = endDate.replace(/-/g,'');
+      const dateStr   = startDate === endDate ? safeStart : `${safeStart}_${safeEnd}`;
+      a.download = `invoice-${merchantName.replace(/\s+/g,'_')}-${dateStr}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast.success('Invoice downloaded!');
+    } catch (err) {
+      toast.error(err.message || 'Download failed');
+    }
+    setDownloading(false);
+  };
+
+  return (
+    <>
+      {/* ── Section card ── */}
+      <div className="mx-4 mb-3 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5 overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+          <span className="material-symbols-outlined text-primary text-lg">receipt_long</span>
+          <p className="text-sm font-bold text-primary uppercase tracking-wider">
+            Download Invoice
+          </p>
+        </div>
+
+        <div className="px-4 pb-4 space-y-3">
+          <p className="text-xs text-on-surface-variant">
+            Select a date range to generate a payment voucher for all transactions within that period.
+          </p>
+
+          {/* Date picker + check row */}
+          <div className="flex flex-wrap gap-2 items-end">
+            <div className="flex-1 min-w-[130px]">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                max={today}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-primary transition-all"
+              />
+            </div>
+            <div className="flex-1 min-w-[130px]">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                max={today}
+                min={startDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-primary transition-all"
+              />
+            </div>
+            <button
+              id="invoice-check-btn"
+              onClick={handleCheck}
+              disabled={checking}
+              className="px-4 py-2 rounded-xl border border-primary/40 text-primary text-xs font-semibold hover:bg-primary/10 transition-colors disabled:opacity-60 flex items-center gap-1.5 whitespace-nowrap"
+            >
+              {checking
+                ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                : <span className="material-symbols-outlined text-sm">search</span>}
+              Check Entries
+            </button>
+          </div>
+
+          {/* Result feedback */}
+          {noData && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-700">
+              <span className="material-symbols-outlined text-sm">info</span>
+              No transactions found for {merchantName} in this period.
+            </div>
+          )}
+
+          {txnCount !== null && !noData && (
+            <>
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700">
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                <span>
+                  Found <strong>{txnCount}</strong> transaction{txnCount !== 1 ? 's' : ''} in this period — ready to generate invoice.
+                </span>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <button
+                  id="invoice-preview-btn"
+                  onClick={handlePreview}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-surface-container border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/10 transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">preview</span>
+                  Preview Invoice
+                </button>
+                <button
+                  id="invoice-download-btn"
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-br from-secondary to-primary text-white text-xs font-semibold shadow hover:shadow-md transition-all active:scale-95 disabled:opacity-60"
+                >
+                  {downloading
+                    ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                    : <span className="material-symbols-outlined text-sm">download</span>}
+                  {downloading ? 'Generating PDF…' : 'Save as PDF'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Preview Modal (full-screen iframe) ── */}
+      {previewing && createPortal(
+        <div className="fixed inset-0 z-[200] flex flex-col bg-black/70 backdrop-blur-sm">
+          {/* Modal header */}
+          <div className="flex items-center justify-between px-5 py-3 bg-[#1a1a1a] shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">receipt_long</span>
+              <span className="text-white font-semibold text-sm">
+                Invoice Preview — {merchantName} · {startDate === endDate ? startDate : `${startDate} to ${endDate}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                id="invoice-download-from-preview-btn"
+                onClick={handleDownload}
+                disabled={downloading}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-gradient-to-br from-secondary to-primary text-white text-xs font-semibold shadow hover:shadow-md transition-all active:scale-95 disabled:opacity-60"
+              >
+                {downloading
+                  ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                  : <span className="material-symbols-outlined text-sm">download</span>}
+                {downloading ? 'Generating…' : 'Save PDF'}
+              </button>
+              <button
+                onClick={() => { setPreviewing(false); setPreviewHtml(''); }}
+                className="p-1.5 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <span className="material-symbols-outlined text-white">close</span>
+              </button>
+            </div>
+          </div>
+
+          {/* iframe */}
+          <iframe
+            ref={iframeRef}
+            title="Invoice Preview"
+            className="flex-1 w-full bg-white"
+            style={{ border: 'none' }}
+          />
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
 
 // ── Balance badge ─────────────────────────────────────────────────────────────
 function BalanceBadge({ balance }) {
@@ -640,6 +887,9 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
             ))}
           </div>
         )}
+
+        {/* ── Invoice Download Section ── */}
+        {!loading && <InvoiceSection merchantName={merchantName} />}
 
         {/* ── Transaction list ── */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
