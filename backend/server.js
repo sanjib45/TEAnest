@@ -49,6 +49,7 @@ app.use('/api/labor',                 protect, require('./routes/laborRoutes'));
 app.use('/api/factory',               protect, require('./routes/factoryRoutes'));
 app.use('/api/payments',              protect, require('./routes/paymentRoutes'));
 app.use('/api/dashboard',             protect, require('./routes/dashboardRoutes'));
+app.use('/api/users',                 protect, require('./routes/userRoutes'));
 
 // ── Health check (public) ──────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', project: 'DOOARS GREEN FPO MCS LTD.' }));

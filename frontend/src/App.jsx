@@ -9,7 +9,6 @@ import MerchantPage from './pages/MerchantPage';
 import LaborPage from './pages/LaborPage';
 import FactoryPage from './pages/FactoryPage';
 import PaymentsPage from './pages/PaymentsPage';
-import { ReportsPage } from './pages/PlaceholderPages';
 
 const ProtectedRoute = () => {
   const token = localStorage.getItem('token');
@@ -39,7 +38,6 @@ export default function App() {
             <Route path="labor" element={<LaborPage />} />
             <Route path="factory" element={<FactoryPage />} />
             <Route path="payments" element={<PaymentsPage />} />
-            <Route path="reports" element={<ReportsPage />} />
           </Route>
         </Route>
         
