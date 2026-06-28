@@ -8,7 +8,6 @@ const navItems = [
   { to: '/labor', icon: 'groups', label: 'Labor' },
   { to: '/factory', icon: 'potted_plant', label: 'Factory' },
   { to: '/payments', icon: 'payments', label: 'Payments' },
-  { to: '/reports', icon: 'assessment', label: 'Reports' },
 ];
 
 export default function Header() {

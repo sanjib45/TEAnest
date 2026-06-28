@@ -1,13 +1,32 @@
 import { Outlet } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
+import SettingsModal from './SettingsModal';
+import { authAPI } from '../api/authApi';
 
 export default function Layout() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768); // Default open on desktop
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [profile, setProfile] = useState(null);
+
+  const fetchProfile = async () => {
+    try {
+      const { data } = await authAPI.getProfile();
+      if (data && data.success) {
+        setProfile(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   // Update isMobile state on window resize
-  useState(() => {
+  useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -16,22 +35,35 @@ export default function Layout() {
   return (
     <div className="flex flex-col h-screen w-full bg-surface overflow-hidden font-sans relative">
       {/* Top Navbar */}
-      <header className="h-16 shrink-0 border-b border-outline-variant/20 bg-surface-container-lowest flex items-center px-4 z-50">
-        <button 
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="p-2 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant active:scale-90 flex items-center justify-center mr-4"
-        >
-          <span className="material-symbols-outlined">menu</span>
-        </button>
-        
-        <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 rounded-full overflow-hidden flex justify-center items-start shadow-sm bg-white border border-white shrink-0">
-            <img src="/logo.png" alt="DOOARS GREEN Logo" className="h-[115%] max-w-none -mt-[10%]" />
-          </div>
-          <span className="font-headline font-bold text-primary text-xl tracking-tight">
-            DOOARS GREEN
-          </span>
-        </a>
+      <header className="h-16 shrink-0 border-b border-outline-variant/20 bg-surface-container-lowest flex items-center justify-between px-4 z-50">
+        <div className="flex items-center">
+          <button 
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant active:scale-90 flex items-center justify-center mr-4"
+          >
+            <span className="material-symbols-outlined">menu</span>
+          </button>
+          
+          <a href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex justify-center items-start shadow-sm bg-white border border-white shrink-0">
+              <img src="/logo.png" alt="DOOARS GREEN Logo" className="h-[115%] max-w-none -mt-[10%]" />
+            </div>
+            <span className="font-headline font-bold text-primary text-xl tracking-tight">
+              DOOARS GREEN
+            </span>
+          </a>
+        </div>
+
+        {/* Settings button in the top right corner */}
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setSettingsModalOpen(true)}
+            className="p-2 rounded-xl hover:bg-surface-container transition-all text-on-surface-variant active:scale-90 flex items-center justify-center"
+            title="Settings"
+          >
+            <span className="material-symbols-outlined">settings</span>
+          </button>
+        </div>
       </header>
 
       {/* Main Container */}
@@ -56,6 +88,7 @@ export default function Layout() {
           collapsed={!isMobile && !sidebarOpen} 
           onToggle={() => setSidebarOpen(o => !o)} 
           isMobile={isMobile}
+          profile={profile}
         />
       </div>
 
@@ -74,6 +107,12 @@ export default function Layout() {
           <path d="M5,85 Q25,5 45,45 T85,5" fill="none" stroke="currentColor" strokeWidth="0.1" />
         </svg>
       </div>
+
+      <SettingsModal 
+        isOpen={settingsModalOpen} 
+        onClose={() => setSettingsModalOpen(false)} 
+        onProfileUpdate={fetchProfile}
+      />
     </div>
   );
 }
