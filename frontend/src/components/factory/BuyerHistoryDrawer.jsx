@@ -119,6 +119,10 @@ function SaleCard({ item, index, onPaymentClick, onDataChange }) {
                   <span className="text-on-surface-variant">Rate / kg</span>
                   <span className="font-medium">₹{fmt(item.rate)}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Fine leaps ({fmtN(item.lessPercentage)}%)</span>
+                  <span className="font-medium text-error">− {fmtN(v.lessQty)} kg</span>
+                </div>
               </div>
             </div>
 
