@@ -112,7 +112,7 @@ function InvoiceSection({ merchantName }) {
     setDownloading(true);
     try {
       const res = await fetch(
-        `http://localhost:5000/api/merchant-transactions/invoice/by-merchant-date?merchantName=${encodeURIComponent(merchantName)}&startDate=${startDate}&endDate=${endDate}`,
+        `http://localhost:5005/api/merchant-transactions/invoice/by-merchant-date?merchantName=${encodeURIComponent(merchantName)}&startDate=${startDate}&endDate=${endDate}`,
         { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } }
       );
       if (!res.ok) {

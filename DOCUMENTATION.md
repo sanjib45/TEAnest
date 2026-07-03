@@ -943,6 +943,10 @@ npm run dev        # Vite dev server
 ```
 App opens on `http://localhost:5173` (default Vite port)
 
+> **⚠️ Common URL Mistake:**
+> When copying the terminal output, use **either** the Local URL (`http://localhost:5173`) **or** the Network URL (e.g., `http://10.5.x.x:5173`).
+> **Do not combine them** (e.g., `http://localhost:10.5.0.2:5005`). Doing so creates an invalid URL and will cause your browser to perform a Google search instead of loading the app.
+
 ---
 
 ## 10. Changelog
