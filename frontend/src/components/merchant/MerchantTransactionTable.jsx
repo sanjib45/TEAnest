@@ -11,7 +11,7 @@
 
 const TABLE_HEADERS = [
   'Sl. No.', 'Date', 'Merchant', 'Type',
-  'Gross Qty', 'Net Qty', 'Rate/kg',
+  'Gross Qty', 'Less %', 'Fine Leaf %', 'Net Qty', 'Rate/kg',
   'Gross Amt', 'Workers', 'Labor Total',
   'Advance', 'Balance', 'Action',
 ];
@@ -93,6 +93,8 @@ export default function MerchantTransactionTable({ items, loading, onViewDetails
                 </td>
 
                 <td className="px-4 py-4 text-on-surface-variant">{item.grossQty} kg</td>
+                <td className="px-4 py-4 text-on-surface-variant">{item.lessPercent > 0 ? `${item.lessPercent}%` : '—'}</td>
+                <td className="px-4 py-4 text-on-surface-variant">{item.fineLeaf > 0 ? `${item.fineLeaf}%` : '—'}</td>
                 <td className="px-4 py-4 font-medium">{item.netQty} kg</td>
                 <td className="px-4 py-4 text-on-surface-variant">₹{item.ratePerKg}</td>
                 <td className="px-4 py-4 font-medium">

@@ -13,8 +13,8 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const { data } = await authAPI.register(form);
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('token', data.data.token);
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
       toast.success('Registration successful!');
       navigate('/dashboard');
     } catch (err) {
@@ -51,7 +51,7 @@ export default function RegisterPage() {
               <label className="text-sm font-semibold tracking-wide ml-1 text-on-surface-variant">Phone Number</label>
               <div className="relative group focus-glow rounded-xl">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary">call</span>
-                <input type="tel" required placeholder="7076661578" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-low/50 focus:outline-none focus:border-primary text-sm" />
+                <input type="tel" required placeholder="Enter phone number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-low/50 focus:outline-none focus:border-primary text-sm" />
               </div>
             </div>
 
@@ -75,6 +75,18 @@ export default function RegisterPage() {
             <Link to="/login" className="text-sm font-bold text-primary hover:underline underline-offset-4 flex items-center gap-1">
               Sign In <span className="material-symbols-outlined text-[16px]">login</span>
             </Link>
+          </div>
+        </div>
+
+        {/* Status bar */}
+        <div className="fixed bottom-6 left-6 z-50 opacity-85 pointer-events-none animate-fade-up">
+          <div className="flex items-center gap-4 px-5 py-2.5 glass-panel rounded-full border border-white/10 bg-black/20 backdrop-blur-md shadow-xl">
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-2 bg-[#4CAF50] rounded-full shadow-[0_0_8px_#4CAF50]" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">CREATED BY: SANJIB</span>
+            </div>
+            <div className="w-[1px] h-3.5 bg-white/20" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">SESSION V0.1</span>
           </div>
         </div>
       </main>

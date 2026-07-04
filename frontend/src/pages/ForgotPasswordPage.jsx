@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
               <label className="text-sm font-semibold tracking-wide ml-1 text-on-surface-variant">Phone Number</label>
               <div className="relative group focus-glow rounded-xl">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary">call</span>
-                <input type="tel" required placeholder="7076661578" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-low/50 focus:outline-none focus:border-primary text-sm" />
+                <input type="tel" required placeholder="Enter phone number" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-low/50 focus:outline-none focus:border-primary text-sm" />
               </div>
             </div>
 

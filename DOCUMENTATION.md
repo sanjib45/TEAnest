@@ -1,6 +1,6 @@
 # TEAnest — FineLEAF Project Documentation
 
-> **Last updated:** 2026-06-26  
+> **Last updated:** 2026-07-04  
 > **Project:** Tea Estate Management System  
 > **Repo root:** `FineLEAF/`
 
@@ -30,6 +30,7 @@
 8. [Environment Variables](#8-environment-variables)
 9. [Running the Project](#9-running-the-project)
 10. [Changelog](#10-changelog)
+11. [Security Architecture](#11-security-architecture)
 
 ---
 
@@ -589,15 +590,16 @@ All validators use `express-validator`'s `body()` chains.
 
 ### 5.2 API Layer
 
-All API modules live in `frontend/src/api/`. The **shared Axios instance** is created in `merchantApi.js`:
+All API modules live in `frontend/src/api/`. All modules now import from the **single shared client** `frontend/src/api/client.js`:
 
 ```js
-axios.create({ baseURL: 'http://localhost:5000/api' })
+// client.js — single Axios instance used by ALL api files
+axios.create({ baseURL: VITE_API_BASE_URL, timeout: 10_000, withCredentials: true })
 ```
 
-`merchantTransactionApi.js` creates its **own** Axios instance with an **interceptor** that attaches `Authorization: Bearer <token>` from `localStorage` on every request.
-
-> ⚠️ Other API modules (`laborApi.js`, `factoryApi.js`, `paymentsApi.js`) re-use the base instance from `merchantApi.js` (imported as `API`) — **no auth interceptor** on those requests.
+The client has **two interceptors:**
+1. **Request**: Attaches `Authorization: Bearer <accessToken>` from `localStorage`
+2. **Response**: On `401 TOKEN_EXPIRED` → silently calls `POST /auth/refresh` (httpOnly cookie sent automatically), queues all in-flight requests, retries them with the new access token. On unrecoverable 401 → hard logout.
 
 #### API modules summary
 
@@ -892,17 +894,34 @@ The `balance` field on the transaction document is recalculated and saved whenev
 ## 7. Authentication Flow
 
 ```
-1. User submits phone + password on /login
-2. Frontend calls POST /api/auth/login
-3. Backend: find user by phone → bcrypt.compare(password, hash)
-4. On success: JWT signed with { id: user._id }, expires in 30 days
-5. Frontend stores token in localStorage('token')
-6. ProtectedRoute checks localStorage('token') on every navigation
-7. merchantTransactionApi.js attaches token as Authorization header
-8. On logout: localStorage.removeItem('token') + navigate('/login')
-```
+LOGIN
+1. User submits phone + password → POST /api/auth/login
+2. Backend: bcrypt.compare(password, hash)
+3. On success:
+   a. Access Token  (JWT, 15 min)  → returned in JSON body
+   b. Refresh Token (JWT, 7 days)  → sent as httpOnly Secure cookie
+   c. sha256(refreshToken) saved in user.refreshTokens[] (max 5)
+4. Frontend stores accessToken in localStorage
 
-> ⚠️ **Current limitation:** The backend does **not** verify JWT on any route. Middleware for `protect` / `authenticate` is not yet implemented. All API routes are currently unprotected.
+PROTECTED API CALLS
+5. client.js attaches Authorization: Bearer <accessToken> to every request
+6. Backend protect() middleware verifies access token
+
+SILENT TOKEN REFRESH (on 401 TOKEN_EXPIRED)
+7. client.js interceptor catches 401 { code: 'TOKEN_EXPIRED' }
+8. Calls POST /api/auth/refresh — browser sends httpOnly cookie automatically
+9. Backend: verify refresh token → find hash in DB → issue NEW access + refresh tokens
+   (old hash removed — token rotation prevents replay attacks)
+10. Frontend stores new accessToken, notifies all queued requests, retries them
+
+LOGOUT
+11. POST /api/auth/logout → clears httpOnly cookie + removes hash from DB
+12. Frontend: localStorage.removeItem('accessToken') + navigate('/login')
+
+PASSWORD RESET
+13. POST /api/auth/reset-password → invalidates ALL refresh tokens for the user
+    forcing re-login on all devices
+```
 
 ---
 
@@ -913,8 +932,11 @@ The `balance` field on the transaction document is recalculated and saved whenev
 | Variable | Description | Example |
 |---|---|---|
 | `MONGO_URI` | MongoDB connection string | `mongodb://localhost:27017/teanest` |
-| `JWT_SECRET` | Secret key for JWT signing | `your_secret_key_here` |
-| `PORT` | Server port (optional) | `5000` |
+| `JWT_SECRET` | Secret key for **access** JWT signing (15min expiry) | `strong_random_string` |
+| `JWT_REFRESH_SECRET` | Secret key for **refresh** JWT signing (7d expiry) | `another_strong_string` |
+| `PORT` | Server port (optional) | `5005` |
+| `ALLOWED_ORIGINS` | Comma-separated allowed frontend URLs (CORS + cookie) | `http://localhost:5173` |
+| `NODE_ENV` | Environment (`development` or `production`) | `development` |
 
 ---
 

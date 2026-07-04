@@ -37,7 +37,7 @@ export default function MerchantStatCards({ stats }) {
         highlight
       />
       <StatCard
-        label="Outstanding Balance"
+        label="Total Payable"
         value={`₹${(totalBalance || 0).toLocaleString('en-IN')}`}
         icon="account_balance_wallet"
       />

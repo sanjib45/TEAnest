@@ -80,6 +80,7 @@ exports.create = async (req, res) => {
       ...req.body,
       paymentId: genPaymentId(),
       transaction: txnId,
+      merchant: transaction.merchant,
     });
 
     // Recalculate remaining after this payment

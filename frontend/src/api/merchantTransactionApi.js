@@ -1,28 +1,16 @@
-import axios from 'axios';
+import client from './client';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005/api';
 
-const API = axios.create({
-  baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-// Attach auth token if present
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 export const merchantTxnAPI = {
-  getAll:   (params) => API.get('/merchant-transactions', { params }),
-  getById:  (id)     => API.get(`/merchant-transactions/${id}`),
-  getStats: ()       => API.get('/merchant-transactions/stats'),
-  create:   (data)   => API.post('/merchant-transactions', data),
-  update:   (id, data) => API.put(`/merchant-transactions/${id}`, data),
-  remove:   (id)     => API.delete(`/merchant-transactions/${id}`),
+  getAll:   (params)       => client.get('/merchant-transactions', { params }),
+  getById:  (id)           => client.get(`/merchant-transactions/${id}`),
+  getStats: ()             => client.get('/merchant-transactions/stats'),
+  create:   (data)         => client.post('/merchant-transactions', data),
+  update:   (id, data)     => client.put(`/merchant-transactions/${id}`, data),
+  remove:   (id)           => client.delete(`/merchant-transactions/${id}`),
 
-  // Client-side calculation mirror (instant UI feedback without round-trip)
+  // ── Client-side calculation mirror (instant UI preview, no network) ───
   compute: (d) => {
     const grossQty             = Number(d.grossQty)             || 0;
     const lessPercent          = Number(d.lessPercent)          || 0;
@@ -44,41 +32,25 @@ export const merchantTxnAPI = {
     return { lessQty, netQty, grossAmount, totalLaborCharges, netPayable, finalPayable, balance };
   },
 
-  // ── Payments sub-resource ─────────────────────────────────────────────────
-  getPayments:   (txnId)        => API.get(`/merchant-transactions/${txnId}/payments`),
-  addPayment:    (txnId, data)  => API.post(`/merchant-transactions/${txnId}/payments`, data),
-  deletePayment: (txnId, payId) => API.delete(`/merchant-transactions/${txnId}/payments/${payId}`),
+  // ── Payments sub-resource ─────────────────────────────────────────────
+  getPayments:   (txnId)        => client.get(`/merchant-transactions/${txnId}/payments`),
+  addPayment:    (txnId, data)  => client.post(`/merchant-transactions/${txnId}/payments`, data),
+  deletePayment: (txnId, payId) => client.delete(`/merchant-transactions/${txnId}/payments/${payId}`),
 
-  // ── Invoice endpoints ─────────────────────────────────────────────────────
-  /**
-   * Returns a direct URL to the PDF invoice (opens/downloads in browser).
-   * Use: window.open(merchantTxnAPI.invoiceUrl(merchantName, startDate, endDate))
-   */
+  // ── Invoice endpoints ─────────────────────────────────────────────────
   invoiceUrlByDate: (merchantName, startDate, endDate) => {
-    const token = localStorage.getItem('token') || '';
+    const token = localStorage.getItem('accessToken') || '';
     return `${BASE_URL}/merchant-transactions/invoice/by-merchant-date?merchantName=${encodeURIComponent(merchantName)}&startDate=${startDate}&endDate=${endDate}&token=${token}`;
   },
-
-  /**
-   * Fetches the HTML preview of a merchant+date range invoice.
-   * Returns raw HTML string.
-   */
   getInvoiceHtmlByDate: (merchantName, startDate, endDate) =>
-    API.get('/merchant-transactions/invoice/by-merchant-date', {
+    client.get('/merchant-transactions/invoice/by-merchant-date', {
       params: { merchantName, startDate, endDate, format: 'html' },
       responseType: 'text',
     }),
-
-  /**
-   * Fetches a single-transaction invoice as a blob URL.
-   */
   getInvoiceBlob: async (txnId) => {
-    const res = await API.get(`/merchant-transactions/${txnId}/invoice`, {
-      responseType: 'blob',
-    });
+    const res = await client.get(`/merchant-transactions/${txnId}/invoice`, { responseType: 'blob' });
     return URL.createObjectURL(res.data);
   },
 };
 
-export default API;
-
+export default client;

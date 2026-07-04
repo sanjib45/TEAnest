@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
+import { authAPI } from '../api/authApi';
 
 const navItems = [
   { to: '/dashboard', icon: 'dashboard',    label: 'Dashboard' },
@@ -14,11 +15,18 @@ export default function Sidebar({ collapsed = false, onToggle, isMobile = false,
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
 
-  const handleConfirmLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('token');
+  const handleConfirmLogout = async () => {
+    try {
+      await authAPI.logout(); // clears httpOnly cookie + DB refresh token hash
+    } catch {
+      // ignore — we're logging out regardless
+    }
+    // Clear all auth keys (supports both old and new key names for safety)
+    ['accessToken', 'token', 'isAuthenticated', 'user'].forEach(
+      k => localStorage.removeItem(k)
+    );
     setShowLogoutConfirm(false);
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   return (

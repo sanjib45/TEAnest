@@ -1,23 +1,13 @@
-import axios from 'axios';
-
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5005/api',
-});
-
-// Attach auth token if present
-API.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+import client from './client';
 
 export const merchantAPI = {
-  getAll: (params) => API.get('/merchant', { params }),
-  getById: (id) => API.get(`/merchant/${id}`),
-  create: (data) => API.post('/merchant', data),
-  update: (id, data) => API.put(`/merchant/${id}`, data),
-  remove: (id) => API.delete(`/merchant/${id}`),
-  getStats: () => API.get('/merchant/stats'),
+  getAll:   (params)     => client.get('/merchant', { params }),
+  getById:  (id)         => client.get(`/merchant/${id}`),
+  create:   (data)       => client.post('/merchant', data),
+  update:   (id, data)   => client.put(`/merchant/${id}`, data),
+  remove:   (id)         => client.delete(`/merchant/${id}`),
+  getStats: ()           => client.get('/merchant/stats'),
 };
 
-export default API;
+// Default export kept for backward compatibility (other api files that imported this)
+export default client;

@@ -57,6 +57,12 @@ const merchantTransactionSchema = new mongoose.Schema(
       max: [100, 'Less % cannot exceed 100'],
       default: 0,
     },
+    fineLeaf: {
+      type: Number,
+      min: [0, 'Fine leaf % cannot be negative'],
+      max: [100, 'Fine leaf % cannot exceed 100'],
+      default: 0,
+    },
     ratePerKg: {
       type: Number,
       required: [true, 'Rate per kg is required'],

@@ -11,7 +11,7 @@ import FactoryPage from './pages/FactoryPage';
 import PaymentsPage from './pages/PaymentsPage';
 
 const ProtectedRoute = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   return token ? <Outlet /> : <Navigate to="/login" replace />;
 };
 

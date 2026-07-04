@@ -13,6 +13,8 @@ const fs   = require('fs');
 const path = require('path');
 const MerchantTransaction = require('../models/MerchantTransaction');
 const MerchantPayment     = require('../models/MerchantPayment');
+const MerchantAdvance     = require('../models/MerchantAdvance');
+const Merchant            = require('../models/Merchant');
 
 // ── Logo: embed as base64 so it works regardless of server CWD ────────────────
 const LOGO_PATH = path.join(__dirname, '..', 'assets', 'logo.png');
@@ -87,43 +89,43 @@ function buildInvoiceHtml(txn, payments) {
 
   // Build payment rows
   const paymentRows = payments.length === 0
-    ? `<tr><td colspan="9" style="text-align:center;padding:12px;color:#888;">No payment records</td></tr>`
+    ? `<tr><td colspan="11" style="text-align:center;padding:12px;color:#888;">No payment records</td></tr>`
     : payments.map((p, i) => `
         <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
           <td>${fmtDate(p.paymentDate)}</td>
+          <td colspan="5" style="text-align: right; padding-right: 15px; font-style: italic; color: #555;">Payment (${p.paymentMode || 'Cash'})</td>
+          <td>${p.notes || '—'}</td>
           <td>—</td>
-          <td>—</td>
+          <td>${p.paymentMode === 'Cash' ? fmt(p.amount) : '—'}</td>
           <td>—</td>
           <td>${fmt(p.amount)}</td>
-          <td>${p.paymentMode || 'Cash'}</td>
-          <td>${p.notes || '—'}</td>
-          <td>${p.paymentMode === 'Cash' ? fmt(p.amount) : '—'}</td>
-          <td>${p.paymentMode !== 'Cash' ? fmt(p.amount) : '—'}</td>
         </tr>`).join('');
 
-  // Main transaction row
   const txnRow = `
     <tr class="row-even">
-      <td>${fmtDate(txn.transactionDate)}</td>
+      <td>${fmtDate(txn.transactionDate)}<br><small>${txn.teaType || ''}</small></td>
       <td>${fmt(txn.grossQty)}</td>
+      <td>${txn.lessPercent > 0 ? `${txn.lessPercent}%` : '—'}</td>
       <td>${fmt(txn.lessQty)}</td>
+      <td>${txn.fineLeaf > 0 ? `${txn.fineLeaf}%` : '—'}</td>
+      <td><strong>${fmt(txn.netQty)}</strong></td>
       <td>${fmt(txn.ratePerKg)}</td>
       <td>${fmt(txn.grossAmount)}</td>
-      <td>${txn.teaType || '—'}</td>
       <td>${fmt(txn.netPayable)}</td>
       <td>${fmt(txn.advancePayment)}</td>
-      <td>${fmt(txn.finalPayable)}</td>
+      <td><strong>${fmt(txn.finalPayable)}</strong></td>
     </tr>`;
 
-  // Total row
   const totalRow = `
     <tr class="total-row">
       <td><strong>Total</strong></td>
       <td>${fmt(txn.grossQty)}</td>
-      <td>${fmt(txn.lessQty)}</td>
-      <td>${fmt(txn.ratePerKg)}</td>
-      <td>${fmt(txn.grossAmount)}</td>
       <td>—</td>
+      <td>${fmt(txn.lessQty)}</td>
+      <td>—</td>
+      <td><strong>${fmt(txn.netQty)}</strong></td>
+      <td>—</td>
+      <td>${fmt(txn.grossAmount)}</td>
       <td>${fmt(txn.netPayable)}</td>
       <td>${fmt(txn.advancePayment)}</td>
       <td class="total-amount">${fmt(txn.finalPayable)}</td>
@@ -458,15 +460,16 @@ ${LOGO_BASE64 ? `<div class="watermark-bg"><img src="${LOGO_BASE64}" alt="waterm
     <thead>
       <tr>
         <th>DATE</th>
-        <th>QTY (kg)</th>
-        <th>LESS NET</th>
+        <th>GROSS (kg)</th>
+        <th>LESS %</th>
+        <th>LESS (kg)</th>
+        <th>FINE LEAF %</th>
+        <th>NET (kg)</th>
         <th>RATE</th>
         <th>AMOUNT</th>
-        <th>DESCRIPTION</th>
-        <th>NET PAYABLE</th>
+        <th>PAYABLE</th>
         <th>ADVANCE</th>
         <th>TOTAL</th>
-      </tr>
     </thead>
     <tbody>
 
@@ -585,7 +588,7 @@ exports.generateInvoice = async (req, res) => {
 };
 
 // ── Build multi-transaction HTML (merchant + date range) ─────────────────────────
-function buildMultiInvoiceHtml(merchantName, startDate, endDate, transactions, paymentsMap) {
+function buildMultiInvoiceHtml(merchantName, startDate, endDate, transactions, paymentsMap, standaloneAdvances) {
   const logoImg = LOGO_BASE64
     ? `<img src="${LOGO_BASE64}" alt="Dooars Green FPO Logo" class="logo-img" />`
     : `<div class="logo-placeholder">DOOARS<br>GREEN<br>FPO</div>`;
@@ -616,19 +619,54 @@ function buildMultiInvoiceHtml(merchantName, startDate, endDate, transactions, p
   const txnRows = transactions.map((t, i) => {
     const payments = paymentsMap[t._id.toString()] || [];
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+    const paymentSubRows = payments.map((p) => `
+      <tr class="row-even" style="font-style: italic; color: #444; background: #fafafa;">
+        <td>${fmtDate(p.paymentDate)}</td>
+        <td colspan="6" style="text-align: right; padding-right: 15px;">Payment (${p.paymentMode || 'Cash'})</td>
+        <td>${p.notes || '—'}</td>
+        <td>—</td>
+        <td>—</td>
+        <td style="color: #2d6a2d; font-weight: bold;">- ${fmt(p.amount)}</td>
+      </tr>`).join('');
+
     return `
       <tr class="${i % 2 === 0 ? 'row-even' : 'row-odd'}">
-        <td>${fmtDate(t.transactionDate)}</td>
+        <td>${fmtDate(t.transactionDate)}<br><small>${t.teaType || ''}</small></td>
         <td>${fmt(t.grossQty)}</td>
+        <td>${t.lessPercent > 0 ? `${t.lessPercent}%` : '—'}</td>
         <td>${fmt(t.lessQty)}</td>
+        <td>${t.fineLeaf > 0 ? `${t.fineLeaf}%` : '—'}</td>
+        <td><strong>${fmt(t.netQty)}</strong></td>
         <td>${fmt(t.ratePerKg)}</td>
         <td>${fmt(t.grossAmount)}</td>
-        <td>${t.teaType || '—'}</td>
         <td>${fmt(t.netPayable)}</td>
         <td>${fmt(t.advancePayment)}</td>
-        <td>${fmt(t.finalPayable)}</td>
-      </tr>`;
+        <td><strong>${fmt(t.finalPayable)}</strong></td>
+      </tr>
+      ${paymentSubRows}`;
   }).join('');
+
+  // Standalone advance rows
+  const advanceRows = (standaloneAdvances || []).map((a) => `
+    <tr class="row-even" style="font-style: italic; color: #8b4513; background: #fff8ec;">
+      <td>${fmtDate(a.advanceDate)}</td>
+      <td colspan="6" style="text-align: right; padding-right: 15px; font-weight: bold;">ADVANCE GIVEN (${a.paymentMode || 'Cash'}) ${a.notes ? ' \u00B7 ' + a.notes : ''}</td>
+      <td>${a.advanceId || ''}</td>
+      <td>—</td>
+      <td>—</td>
+      <td style="color: #c0392b; font-weight: bold;">- ${fmt(a.amount)}</td>
+    </tr>`).join('');
+
+  // Sum of all payments made against these transactions
+  const totalPaymentsMade = Object.values(paymentsMap).reduce(
+    (sum, payments) => sum + payments.reduce((s, p) => s + p.amount, 0), 0
+  );
+  // Sum of standalone advances given in this period
+  const totalStandaloneAdv = (standaloneAdvances || []).reduce((s, a) => s + a.amount, 0);
+  // True net amount still owed after all payments + standalone advances
+  const netFinalAmount = Math.max(0,
+    Math.round((totals.finalPayable - totalPaymentsMade - totalStandaloneAdv) * 100) / 100
+  );
 
   const totalBalance = totals.balance;
 
@@ -745,12 +783,14 @@ ${LOGO_BASE64 ? `<div class="watermark-bg"><img src="${LOGO_BASE64}" alt="waterm
     <thead>
       <tr>
         <th>DATE</th>
-        <th>QTY (kg)</th>
-        <th>LESS NET</th>
+        <th>GROSS (kg)</th>
+        <th>LESS %</th>
+        <th>LESS (kg)</th>
+        <th>FINE LEAF %</th>
+        <th>NET (kg)</th>
         <th>RATE</th>
         <th>AMOUNT</th>
-        <th>DESCRIPTION</th>
-        <th>NET PAYABLE</th>
+        <th>PAYABLE</th>
         <th>ADVANCE</th>
         <th>TOTAL</th>
       </tr>
@@ -759,14 +799,17 @@ ${LOGO_BASE64 ? `<div class="watermark-bg"><img src="${LOGO_BASE64}" alt="waterm
 
 
       ${txnRows}
+      ${advanceRows}
 
       <tr class="total-row">
         <td><strong>Total</strong></td>
         <td>${fmt(totals.grossQty)}</td>
+        <td>—</td>
         <td>${fmt(totals.lessQty)}</td>
         <td>—</td>
-        <td>${fmt(totals.grossAmount)}</td>
         <td>—</td>
+        <td>—</td>
+        <td>${fmt(totals.grossAmount)}</td>
         <td>${fmt(totals.netPayable)}</td>
         <td>${fmt(totals.advancePayment)}</td>
         <td class="total-amount">${fmt(totals.finalPayable)}</td>
@@ -775,13 +818,25 @@ ${LOGO_BASE64 ? `<div class="watermark-bg"><img src="${LOGO_BASE64}" alt="waterm
   </table>
 </div>
 
+<div class="balance-row" style="border-color: #2d6a2d; background: #f0f7f0;">
+  <span class="balance-label" style="color: #1a5c1a;">GROSS PAYABLE (before advances):</span>
+  <span class="balance-value" style="color: #1a5c1a;">${fmt(totals.finalPayable)}</span>
+</div>
+${totalPaymentsMade > 0 ? `<div class="balance-row" style="border-color: #2d6a2d; background: #f5fff5;">
+  <span class="balance-label" style="color: #2d6a2d;">PAYMENTS MADE:</span>
+  <span class="balance-value" style="color: #c0392b;">- ${fmt(totalPaymentsMade)}</span>
+</div>` : ''}
+${totalStandaloneAdv > 0 ? `<div class="balance-row" style="border-color: #e8a000; background: #fff8ec;">
+  <span class="balance-label" style="color: #8b4513;">ADVANCE GIVEN:</span>
+  <span class="balance-value" style="color: #c0392b;">- ${fmt(totalStandaloneAdv)}</span>
+</div>` : ''}
 <div class="balance-row">
-  <span class="balance-label">TOTAL FINAL AMOUNT:</span>
-  <span class="balance-value">${fmt(totals.finalPayable)}</span>
+  <span class="balance-label">NET AMOUNT PAYABLE:</span>
+  <span class="balance-value">${fmt(netFinalAmount)}</span>
 </div>
 
 <div class="amount-words">
-  TOTAL AMOUNT &gt; ${numberToWords(totals.finalPayable)}
+  NET PAYABLE &gt; ${numberToWords(netFinalAmount)}
 </div>
 ${totals.advancePayment > 0 ? `
 <div class="amount-words" style="background: #fdf5f5; border-color: #c0392b; color: #a93226; margin-top: 6px;">
@@ -877,7 +932,10 @@ exports.generateInvoiceByMerchantDate = async (req, res) => {
 
     // Fetch all payments for these transactions in one query
     const txnIds = transactions.map((t) => t._id);
-    const allPayments = await MerchantPayment.find({ transaction: { $in: txnIds } }).lean();
+    const [allPayments, merchant] = await Promise.all([
+      MerchantPayment.find({ transaction: { $in: txnIds } }).lean(),
+      Merchant.findOne({ name: { $regex: new RegExp(`^${merchantName.trim()}$`, 'i') } }).lean(),
+    ]);
 
     // Group payments by transactionId
     const paymentsMap = {};
@@ -887,7 +945,16 @@ exports.generateInvoiceByMerchantDate = async (req, res) => {
       paymentsMap[key].push(p);
     });
 
-    const html = buildMultiInvoiceHtml(merchantName, finalStart, finalEnd, transactions, paymentsMap);
+    // Fetch standalone advance payments for this merchant in this date range
+    let standaloneAdvances = [];
+    if (merchant) {
+      standaloneAdvances = await MerchantAdvance.find({
+        merchant: merchant._id,
+        advanceDate: { $gte: MathStart, $lte: MathEnd },
+      }).sort('advanceDate').lean();
+    }
+
+    const html = buildMultiInvoiceHtml(merchantName, finalStart, finalEnd, transactions, paymentsMap, standaloneAdvances);
 
     // ── HTML preview ──────────────────────────────────────────────────────────
     if (format.toLowerCase() === 'html') {

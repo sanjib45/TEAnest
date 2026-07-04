@@ -12,6 +12,12 @@ const merchantPaymentSchema = new mongoose.Schema(
       required: [true, 'Transaction reference is required'],
       index: true,
     },
+    merchant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Merchant',
+      required: [true, 'Merchant reference is required'],
+      index: true,
+    },
     paymentId: {
       type: String,
       unique: true,

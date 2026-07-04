@@ -14,6 +14,7 @@ const factorySchema = new mongoose.Schema({
   lessPercentage:  { type: Number, min: 0, default: 0 },
   rate:            { type: Number, required: [true, 'Rate is required'], min: 0 },
   advance:         { type: Number, default: 0, min: 0 },
+  fineLeaf:        { type: Number, min: 0, max: 100, default: 0 },
   payments:        { type: [paymentSchema], default: [] },
   dueDate:         { type: Date },
   remarks:         { type: String, trim: true, maxlength: 500 },

@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [form, setForm] = useState({
     phone: localStorage.getItem('savedPhone') || '',
-    password: localStorage.getItem('savedPassword') || ''
+    password: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -36,10 +36,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { data } = await authAPI.login(form);
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('token', data.data.token);
+      localStorage.setItem('accessToken', data.data.accessToken);
+      localStorage.setItem('user', JSON.stringify(data.data.user));
       localStorage.setItem('savedPhone', form.phone);
-      localStorage.setItem('savedPassword', form.password);
       toast.success('Login Successful!');
       navigate('/dashboard');
     } catch (err) {
@@ -84,7 +83,7 @@ export default function LoginPage() {
                 <input
                   type="tel"
                   required
-                  placeholder="7076661578"
+                  placeholder="Enter phone number"
                   value={form.phone}
                   onChange={e => setForm({ ...form, phone: e.target.value })}
                   className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-on-surface focus:outline-none focus:border-primary transition-all text-sm"
@@ -94,10 +93,7 @@ export default function LoginPage() {
 
             {/* Password */}
             <div className="space-y-2 animate-fade-up stagger-3">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-sm font-semibold text-on-surface-variant tracking-wide">Password</label>
-                <Link to="/forgot-password" className="text-xs text-secondary hover:text-primary transition-colors font-semibold">Forgot Password?</Link>
-              </div>
+              <label className="text-sm font-semibold text-on-surface-variant tracking-wide ml-1 block">Password</label>
               <div className="relative group focus-glow rounded-xl transition-all">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors">lock</span>
                 <input
@@ -111,6 +107,9 @@ export default function LoginPage() {
                 <button type="button" onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors">
                   <span className="material-symbols-outlined text-[20px]">{showPass ? 'visibility_off' : 'visibility'}</span>
                 </button>
+              </div>
+              <div className="flex justify-end pt-1 pr-1">
+                <Link to="/forgot-password" className="text-xs text-secondary hover:text-primary transition-colors font-semibold">Forgot Password?</Link>
               </div>
             </div>
 
@@ -137,16 +136,16 @@ export default function LoginPage() {
         </div>
 
         {/* Status bar */}
-        {<div className="fixed bottom-4 left-0 w-full flex justify-center opacity-70 pointer-events-none">
-          <div className="flex items-center gap-6 px-6 py-2 glass-panel rounded-full border border-white/20">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-secondary rounded-full animate-pulse" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Created by: SAnjib</span>
+        <div className="fixed bottom-6 left-6 z-50 opacity-85 pointer-events-none animate-fade-up">
+          <div className="flex items-center gap-4 px-5 py-2.5 glass-panel rounded-full border border-white/10 bg-black/20 backdrop-blur-md shadow-xl">
+            <div className="flex items-center gap-2.5">
+              <div className="w-2 h-2 bg-[#4CAF50] rounded-full shadow-[0_0_8px_#4CAF50]" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">CREATED BY: SANJIB</span>
             </div>
-            <div className="w-px h-3 bg-outline-variant" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">Session v0.1</span>
+            <div className="w-[1px] h-3.5 bg-white/20" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/50">SESSION V0.1</span>
           </div>
-        </div>}
+        </div>
       </main>
     </div>
   );

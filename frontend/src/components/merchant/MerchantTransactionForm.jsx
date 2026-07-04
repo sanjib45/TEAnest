@@ -142,9 +142,9 @@ export default function MerchantTransactionForm({ form, editing, calc, submittin
         {/* ── Row 1b: Date ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <InputField
-            label="Transaction Date"
+            label="Transaction Date & Time"
             name="transactionDate"
-            type="date"
+            type="datetime-local"
             value={form.transactionDate}
             onChange={handleChange}
             required
@@ -152,7 +152,7 @@ export default function MerchantTransactionForm({ form, editing, calc, submittin
         </div>
 
         {/* ── Row 2: Quantity ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
           <InputField
             label="Gross Qty (kg)"
             name="grossQty"
@@ -171,6 +171,16 @@ export default function MerchantTransactionForm({ form, editing, calc, submittin
             step="0.01"
             min="0"
             value={form.lessPercent}
+            onChange={handleChange}
+            placeholder="0"
+          />
+          <InputField
+            label="Fine Leaf %"
+            name="fineLeaf"
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.fineLeaf}
             onChange={handleChange}
             placeholder="0"
           />

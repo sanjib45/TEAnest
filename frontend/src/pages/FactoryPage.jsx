@@ -11,12 +11,13 @@ import BuyerHistoryDrawer from '../components/factory/BuyerHistoryDrawer';
 const PAYMENT_MODES = ['Cash', 'Online', 'Cheque'];
 
 const getEmptyForm = () => ({
-  date:           new Date().toISOString().slice(0, 10),
+  date:           new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
   buyerName:      '',
   buyerId:        '',
   buyerObj:       null,
   totalQuantity:  '',
   lessPercentage: '',
+  fineLeaf:       '',
   rate:           '',
   advance:        '',
   dueDate:        '',
@@ -24,7 +25,7 @@ const getEmptyForm = () => ({
 });
 
 const getEmptyPayment = () => ({
-  date:   new Date().toISOString().slice(0, 10),
+  date:   new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
   amount: '',
   mode:   'Online',
 });
@@ -145,7 +146,7 @@ function PaymentModal({ sale, onClose, onSaved }) {
           <form onSubmit={handleAdd} className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant mb-1.5">Date</label>
-              <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
+              <input type="datetime-local" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
                 className="w-full px-3 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
             </div>
             <div>
@@ -549,15 +550,16 @@ export default function FactoryPage() {
 
   const handleEdit = (item) => {
     setForm({
-      date:           item.date?.slice(0, 10) || '',
+      date:           item.date?.slice(0, 16) || '',
       buyerName:      item.buyerName,
       buyerId:        item.buyer || '',
       buyerObj:       item.buyer ? { _id: item.buyer, name: item.buyerName, phone: '' } : null,
       totalQuantity:  item.totalQuantity,
       lessPercentage: item.lessPercentage,
+      fineLeaf:       item.fineLeaf || '',
       rate:           item.rate,
       advance:        item.advance || 0,
-      dueDate:        item.dueDate?.slice(0, 10) || '',
+      dueDate:        item.dueDate?.slice(0, 16) || '',
       remarks:        item.remarks || '',
     });
     setEditing(item._id); setShowForm(true);
@@ -686,7 +688,7 @@ export default function FactoryPage() {
                 {/* Date */}
                 <div>
                   <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Date *</label>
-                  <input name="date" type="date" value={form.date} onChange={handleChange} required
+                  <input name="date" type="datetime-local" value={form.date} onChange={handleChange} required
                     className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
                 </div>
                 {/* Buyer Name (SearchableSelect) */}
@@ -701,13 +703,8 @@ export default function FactoryPage() {
                     required
                   />
                 </div>
-                {/* Remarks */}
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Remarks</label>
-                  <input name="remarks" type="text" value={form.remarks} onChange={handleChange} placeholder="e.g. Fertilizer"
-                    className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
-                </div>
               </div>
+
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 {/* Total Qty */}
@@ -720,6 +717,12 @@ export default function FactoryPage() {
                 <div>
                   <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Less % *</label>
                   <input name="lessPercentage" type="number" min="0" max="100" step="0.01" value={form.lessPercentage} onChange={handleChange} required placeholder="2.00"
+                    className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
+                </div>
+                {/* Fine Leaf % */}
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Fine Leaf %</label>
+                  <input name="fineLeaf" type="number" min="0" max="100" step="0.01" value={form.fineLeaf} onChange={handleChange} placeholder="0.00"
                     className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
                 </div>
                 {/* Less Qty — computed preview */}
@@ -761,7 +764,7 @@ export default function FactoryPage() {
                 {/* Due Date */}
                 <div>
                   <label className="block text-xs font-semibold text-on-surface-variant mb-1.5 uppercase tracking-wider">Due Date</label>
-                  <input name="dueDate" type="date" value={form.dueDate} onChange={handleChange}
+                  <input name="dueDate" type="datetime-local" value={form.dueDate} onChange={handleChange}
                     className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low/50 text-sm text-on-surface focus:outline-none focus:border-primary transition-all" />
                 </div>
                 {/* Due Preview */}
@@ -854,7 +857,7 @@ export default function FactoryPage() {
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 z-10">
               <tr className="bg-surface border-y border-outline-variant/20 shadow-sm">
-                {['Sl. No.', 'Date', 'Buyer Name', 'Total Qty', 'Less %', 'Less Qty', 'Net Qty', 'Rate (₹)', 'Total Amt (₹)', 'Advance (₹)', 'Paid (₹)', 'Due (₹)', 'Remarks', 'Action'].map(h => (
+                {['Sl. No.', 'Date', 'Buyer Name', 'Total Qty', 'Less %', 'Less Qty', 'Fine Leaf %', 'Net Qty', 'Rate (₹)', 'Total Amt (₹)', 'Advance (₹)', 'Paid (₹)', 'Due (₹)', 'Action'].map(h => (
                   <th key={h} className="px-4 py-3.5 text-on-surface-variant font-bold text-sm whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -890,6 +893,9 @@ export default function FactoryPage() {
                       <td className="px-4 py-4 text-right font-medium">{fmtN(item.totalQuantity)}</td>
                       <td className="px-4 py-4 text-right text-on-surface-variant">{fmtN(item.lessPercentage)}%</td>
                       <td className="px-4 py-4 text-right text-on-surface-variant">{fmtN(v.lessQuantity)}</td>
+                      <td className="px-4 py-4 text-right text-on-surface-variant">
+                        {item.fineLeaf > 0 ? `${fmtN(item.fineLeaf)}%` : '—'}
+                      </td>
                       <td className="px-4 py-4 text-right font-semibold text-primary">{fmtN(v.netQuantity)}</td>
                       <td className="px-4 py-4 text-right">{fmt(item.rate)}</td>
                       <td className="px-4 py-4 text-right font-bold text-primary">₹{fmt(v.totalAmount)}</td>
@@ -899,11 +905,6 @@ export default function FactoryPage() {
                         <span className={`font-bold ${isDue ? 'text-red-500' : 'text-green-600'}`}>
                           {isDue ? `₹${fmt(v.due)}` : '✓ Clear'}
                         </span>
-                      </td>
-                      <td className="px-4 py-4 text-on-surface-variant whitespace-nowrap">
-                        {item.remarks ? (
-                          <span className="px-2 py-0.5 bg-surface-container text-on-surface-variant text-xs rounded-full">{item.remarks}</span>
-                        ) : '—'}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex gap-2">

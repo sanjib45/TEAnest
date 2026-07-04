@@ -41,6 +41,195 @@ const fmtDate = (d) =>
 
 const PAYMENT_MODES = ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Other'];
 
+const ADVANCE_MODES = ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Other'];
+
+// ── Advance Payment Section ───────────────────────────────────────────────────
+function AdvanceSection({ merchantProfile, onDataChange, onAdvancesLoaded }) {
+  const [advances, setAdvances] = useState([]);
+  const [totalAdvance, setTotalAdvance] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    amount: '',
+    advanceDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+    paymentMode: 'Cash',
+    notes: '',
+  });
+
+  const merchantId = merchantProfile?._id;
+
+  const loadAdvances = useCallback(async () => {
+    if (!merchantId) return;
+    setLoading(true);
+    try {
+      const { data: res } = await merchantMasterAPI.getAdvances(merchantId);
+      setAdvances(res.data.advances);
+      setTotalAdvance(res.data.totalAdvance);
+      if (onAdvancesLoaded) onAdvancesLoaded(res.data.totalAdvance);
+    } catch {
+      toast.error('Failed to load advances');
+    }
+    setLoading(false);
+  }, [merchantId, onAdvancesLoaded]);
+
+  useEffect(() => { loadAdvances(); }, [loadAdvances]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!merchantId) return toast.error('Merchant profile not loaded yet');
+    setSubmitting(true);
+    try {
+      await merchantMasterAPI.createAdvance(merchantId, form);
+      toast.success('Advance recorded!');
+      setForm({
+        amount: '',
+        advanceDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        paymentMode: 'Cash',
+        notes: '',
+      });
+      setShowForm(false);
+      await loadAdvances();
+      onDataChange();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record advance');
+    }
+    setSubmitting(false);
+  };
+
+  const handleDelete = async (advanceId) => {
+    if (!merchantId) return;
+    try {
+      await merchantMasterAPI.deleteAdvance(merchantId, advanceId);
+      toast.success('Advance deleted');
+      await loadAdvances();
+      onDataChange();
+    } catch {
+      toast.error('Delete failed');
+    }
+  };
+
+  return (
+    <div className="border-b border-outline-variant/20 shrink-0">
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-4 py-3 bg-amber-50/50">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-amber-600 text-[18px]">currency_rupee</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-800">Advance Payments to Farmer</span>
+          {totalAdvance > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-800">
+              Total: ₹{fmt(totalAdvance)}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setShowForm(v => !v)}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
+        >
+          <span className="material-symbols-outlined text-sm">{showForm ? 'close' : 'add'}</span>
+          {showForm ? 'Cancel' : 'Add Advance'}
+        </button>
+      </div>
+
+      {/* Add Advance Form */}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="px-4 py-3 bg-amber-50/30 border-b border-amber-100 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Amount (₹) *</label>
+              <input
+                type="number" step="0.01" min="1" required
+                value={form.amount}
+                onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                placeholder="e.g. 500"
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Date & Time *</label>
+              <input
+                type="datetime-local" required
+                value={form.advanceDate}
+                onChange={e => setForm(p => ({ ...p, advanceDate: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Mode</label>
+              <select
+                value={form.paymentMode}
+                onChange={e => setForm(p => ({ ...p, paymentMode: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              >
+                {ADVANCE_MODES.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Notes</label>
+              <input
+                type="text"
+                value={form.notes}
+                onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                placeholder="Optional note"
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+          </div>
+          <button
+            type="submit" disabled={submitting}
+            className="px-6 py-2 bg-amber-600 text-white rounded-full text-xs font-semibold hover:bg-amber-700 transition-all disabled:opacity-60 flex items-center gap-1.5"
+          >
+            {submitting
+              ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+              : <span className="material-symbols-outlined text-sm">save</span>}
+            {submitting ? 'Saving…' : 'Record Advance'}
+          </button>
+        </form>
+      )}
+
+      {/* Advance list */}
+      <div className="px-4 pb-3">
+        {loading ? (
+          <div className="flex justify-center py-3">
+            <span className="material-symbols-outlined animate-spin text-amber-600 text-xl">progress_activity</span>
+          </div>
+        ) : advances.length === 0 ? (
+          <p className="text-xs text-on-surface-variant italic py-2">No advance payments recorded yet.</p>
+        ) : (
+          <div className="space-y-1.5 pt-2">
+            {advances.map(adv => (
+              <div key={adv._id} className="flex items-center justify-between bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-amber-200 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-amber-700 text-[14px]">payments</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-on-surface">₹{fmt(adv.amount)}</p>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {fmtDate(adv.advanceDate)} · {adv.paymentMode}
+                      {adv.notes && ` · ${adv.notes}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-on-surface-variant/60">{adv.advanceId}</span>
+                  <button
+                    onClick={() => handleDelete(adv._id)}
+                    className="p-1 rounded-lg hover:bg-red-100 text-error transition-colors"
+                    title="Delete advance"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Invoice Download Section ──────────────────────────────────────────────────
 function InvoiceSection({ merchantName }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -111,16 +300,14 @@ function InvoiceSection({ merchantName }) {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const res = await fetch(
-        `http://localhost:5005/api/merchant-transactions/invoice/by-merchant-date?merchantName=${encodeURIComponent(merchantName)}&startDate=${startDate}&endDate=${endDate}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` } }
+      // Use the central Axios client for auth + timeout
+      const res = await import('../../api/client').then(m =>
+        m.default.get('/merchant-transactions/invoice/by-merchant-date', {
+          params: { merchantName, startDate, endDate },
+          responseType: 'blob',
+        })
       );
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ message: 'Download failed' }));
-        throw new Error(err.message);
-      }
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
+      const url  = URL.createObjectURL(res.data);
       const a    = document.createElement('a');
       a.href     = url;
       const safeStart = startDate.replace(/-/g,'');
@@ -133,7 +320,7 @@ function InvoiceSection({ merchantName }) {
       URL.revokeObjectURL(url);
       toast.success('Invoice downloaded!');
     } catch (err) {
-      toast.error(err.message || 'Download failed');
+      toast.error(err.response?.data?.message || err.message || 'Download failed');
     }
     setDownloading(false);
   };
@@ -290,13 +477,13 @@ function BalanceBadge({ balance }) {
   if (balance > 0)
     return (
       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
-        ₹{fmt(balance)} Due
+        ₹{fmt(balance)} Payable
       </span>
     );
   if (balance < 0)
     return (
       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700">
-        Overpaid ₹{fmt(Math.abs(balance))}
+        Adv ₹{fmt(Math.abs(balance))}
       </span>
     );
   return (
@@ -315,7 +502,7 @@ function TransactionCard({ txn, index, onDataChange }) {
   const [submitting, setSubmitting] = useState(false);
   const [payForm, setPayForm] = useState({
     amount: '',
-    paymentDate: new Date().toISOString().slice(0, 10),
+    paymentDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
     paymentMode: 'Cash',
     notes: '',
   });
@@ -349,7 +536,7 @@ function TransactionCard({ txn, index, onDataChange }) {
       toast.success('Payment recorded!');
       setPayForm({
         amount: '',
-        paymentDate: new Date().toISOString().slice(0, 10),
+        paymentDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
         paymentMode: 'Cash',
         notes: '',
       });
@@ -463,6 +650,12 @@ function TransactionCard({ txn, index, onDataChange }) {
                   <span className="text-on-surface-variant">Less ({txn.lessPercent}%)</span>
                   <span className="font-medium text-error">− {txn.lessQty} kg</span>
                 </div>
+                {txn.fineLeaf > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Fine Leaf</span>
+                    <span className="font-medium text-tertiary">{txn.fineLeaf}%</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t border-outline-variant/20 pt-1.5">
                   <span className="font-semibold">Net Qty</span>
                   <span className="font-bold text-primary">{txn.netQty} kg</span>
@@ -491,13 +684,24 @@ function TransactionCard({ txn, index, onDataChange }) {
                   </span>
                   <span className="font-medium text-error">− ₹{fmt(txn.totalLaborCharges)}</span>
                 </div>
+                <div className="flex justify-between border-t border-outline-variant/20 pt-1.5">
+                  <span className="font-semibold text-on-surface-variant">Net Payable</span>
+                  <span className="font-semibold">₹{fmt(txn.netPayable)}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-on-surface-variant">Advance</span>
                   <span className="font-medium text-error">− ₹{fmt(txn.advancePayment)}</span>
                 </div>
-                <div className="flex justify-between border-t border-outline-variant/20 pt-1.5">
-                  <span className="font-semibold">Final Payable</span>
-                  <span className="font-bold text-primary">₹{fmt(txn.finalPayable)}</span>
+                <div className="flex justify-between border-t border-outline-variant/20 pt-1.5 pb-1">
+                  <span className="font-semibold">Remaining (at creation)</span>
+                  <span className="font-bold text-on-surface">₹{fmt(txn.finalPayable)}</span>
+                </div>
+
+                <div className="flex justify-between pt-1">
+                  <span className="font-bold text-primary">Current Balance</span>
+                  <span className={`font-bold ${txn.balance > 0 ? 'text-orange-600' : txn.balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {txn.balance < 0 ? `Adv ₹${fmt(Math.abs(txn.balance))}` : `₹${fmt(txn.balance)}`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -528,11 +732,11 @@ function TransactionCard({ txn, index, onDataChange }) {
                 }`}
               >
                 <div>
-                  <span className="text-on-surface-variant text-xs">Paid So Far</span>
-                  <p className="font-bold text-on-surface">₹{fmt(payData.summary.totalPaid)}</p>
+                  <span className="text-on-surface-variant text-xs">Total Paid (incl. Adv)</span>
+                  <p className="font-bold text-on-surface">₹{fmt(payData.summary.totalPaid + (txn.advancePayment || 0))}</p>
                 </div>
                 <div>
-                  <span className="text-on-surface-variant text-xs">Remaining</span>
+                  <span className="text-on-surface-variant text-xs">Payable Balance</span>
                   <p className={`font-bold ${isPaid ? 'text-green-600' : 'text-orange-600'}`}>
                     ₹{fmt(payData.summary.remainingBalance)}
                   </p>
@@ -613,7 +817,7 @@ function TransactionCard({ txn, index, onDataChange }) {
                         Date *
                       </label>
                       <input
-                        type="date"
+                        type="datetime-local"
                         value={payForm.paymentDate}
                         onChange={(e) =>
                           setPayForm((p) => ({ ...p, paymentDate: e.target.value }))
@@ -752,6 +956,7 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
   const [transactions, setTransactions] = useState([]);
   const [merchantProfile, setMerchantProfile] = useState(null);
   const [loading, setLoading]           = useState(true);
+  const [totalStandaloneAdv, setTotalStandaloneAdv] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -796,16 +1001,23 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
     (acc, t) => ({
       totalNetQty:     acc.totalNetQty     + (t.netQty        || 0),
       totalGrossAmt:   acc.totalGrossAmt   + (t.grossAmount   || 0),
+      totalAdvance:    acc.totalAdvance    + (t.advancePayment || 0),
       totalFinalPay:   acc.totalFinalPay   + (t.finalPayable  || 0),
       totalBalance:    acc.totalBalance    + (t.balance        || 0),
     }),
-    { totalNetQty: 0, totalGrossAmt: 0, totalFinalPay: 0, totalBalance: 0 }
+    { totalNetQty: 0, totalGrossAmt: 0, totalAdvance: 0, totalFinalPay: 0, totalBalance: 0 }
   );
 
   const handleDataChange = () => {
     load();          // refresh transaction list (balance updated)
     onDataChange();  // refresh parent table + stats cards
   };
+
+  // Called by AdvanceSection whenever advances are loaded/changed
+  const handleAdvancesLoaded = (total) => setTotalStandaloneAdv(total);
+
+  // Net payable = outstanding balance across txns minus standalone advances already given
+  const netPayableAfterAdv = Math.max(0, summary.totalBalance - totalStandaloneAdv);
 
   return createPortal(
     <div
@@ -854,16 +1066,17 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
 
         {/* ── Summary bar ── */}
         {!loading && transactions.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 border-b border-outline-variant/20 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-0 border-b border-outline-variant/20 shrink-0">
             {[
               { label: 'Total Net Qty', value: `${summary.totalNetQty.toFixed(2)} kg`, icon: 'grass' },
               { label: 'Gross Amount', value: `₹${fmt(summary.totalGrossAmt)}`, icon: 'payments' },
+              { label: 'Advances Given', value: `₹${fmt(totalStandaloneAdv)}`, icon: 'currency_rupee', highlight: totalStandaloneAdv > 0 },
               { label: 'Final Payable', value: `₹${fmt(summary.totalFinalPay)}`, icon: 'receipt_long' },
               {
-                label: 'Outstanding',
-                value: `₹${fmt(summary.totalBalance)}`,
+                label: 'Net Payable',
+                value: `₹${fmt(netPayableAfterAdv)}`,
                 icon: 'account_balance_wallet',
-                highlight: summary.totalBalance > 0,
+                highlight: netPayableAfterAdv > 0,
               },
             ].map((s) => (
               <div
@@ -886,6 +1099,15 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── Advance Payments Section ── */}
+        {!loading && merchantProfile && (
+          <AdvanceSection
+            merchantProfile={merchantProfile}
+            onDataChange={handleDataChange}
+            onAdvancesLoaded={handleAdvancesLoaded}
+          />
         )}
 
         {/* ── Invoice Download Section ── */}

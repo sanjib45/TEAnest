@@ -6,23 +6,26 @@ import { authAPI } from '../api/authApi';
 
 export default function Layout() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768); // Default open on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [profile, setProfile] = useState(null);
 
-  const fetchProfile = async () => {
-    try {
-      const { data } = await authAPI.getProfile();
-      if (data && data.success) {
-        setProfile(data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching profile:', err);
-    }
-  };
+  // Pre-populate from cache so there's no "Loading..." flash
+  const [profile, setProfile] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')) || null; }
+    catch { return null; }
+  });
 
   useEffect(() => {
-    fetchProfile();
+    const controller = new AbortController();
+    authAPI.getProfile()
+      .then(({ data }) => {
+        if (data?.success) {
+          setProfile(data.data);
+          localStorage.setItem('user', JSON.stringify(data.data));
+        }
+      })
+      .catch(() => { /* silent — cached value is still shown */ });
+    return () => controller.abort();
   }, []);
 
   // Update isMobile state on window resize
@@ -111,7 +114,16 @@ export default function Layout() {
       <SettingsModal 
         isOpen={settingsModalOpen} 
         onClose={() => setSettingsModalOpen(false)} 
-        onProfileUpdate={fetchProfile}
+        onProfileUpdate={() => {
+          authAPI.getProfile()
+            .then(({ data }) => {
+              if (data?.success) {
+                setProfile(data.data);
+                localStorage.setItem('user', JSON.stringify(data.data));
+              }
+            })
+            .catch(() => {});
+        }}
       />
     </div>
   );

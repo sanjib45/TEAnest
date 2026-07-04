@@ -1,12 +1,10 @@
-import API from './merchantApi'; // Reusing the configured axios instance
-
+import client from './client';
 export const laborAPI = {
-  getAll:    (params) => API.get('/labor', { params }),
-  getById:   (id)     => API.get(`/labor/${id}`),
-  create:    (data)   => API.post('/labor', data),
-  update:    (id, data) => API.put(`/labor/${id}`, data),
-  remove:    (id)     => API.delete(`/labor/${id}`),
-  getStats:  ()       => API.get('/labor/stats'),
-  /** Toggle paymentStatus: Due → Paid → Due */
-  togglePay: (id)     => API.patch(`/labor/${id}/pay`),
+  getAll:    (params)    => client.get('/labor', { params }),
+  getById:   (id)        => client.get(`/labor/${id}`),
+  create:    (data)      => client.post('/labor', data),
+  update:    (id, data)  => client.put(`/labor/${id}`, data),
+  remove:    (id)        => client.delete(`/labor/${id}`),
+  getStats:  ()          => client.get('/labor/stats'),
+  togglePay: (id)        => client.patch(`/labor/${id}/pay`),
 };

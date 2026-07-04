@@ -1,10 +1,12 @@
-import API from './merchantApi';
+import client from './client';
 
 export const authAPI = {
-  login: (data) => API.post('/auth/login', data),
-  register: (data) => API.post('/auth/register', data),
-  resetPassword: (data) => API.post('/auth/reset-password', data),
-  getProfile: () => API.get('/users/me'),
-  updateProfile: (data) => API.put('/users/me', data),
-  changePassword: (data) => API.put('/users/change-password', data),
+  login:         (data) => client.post('/auth/login', data),
+  register:      (data) => client.post('/auth/register', data),
+  refresh:       ()     => client.post('/auth/refresh'),
+  logout:        ()     => client.post('/auth/logout'),
+  resetPassword: (data) => client.post('/auth/reset-password', data),
+  getProfile:    ()     => client.get('/users/me'),
+  updateProfile: (data) => client.put('/users/me', data),
+  changePassword:(data) => client.put('/users/change-password', data),
 };
