@@ -296,34 +296,43 @@ function InvoiceSection({ merchantName }) {
     }
   }, [previewing, previewHtml]);
 
-  // ── Download PDF ──────────────────────────────────────────────────────────
+  // ── Download PDF (via browser print) ─────────────────────────────────────
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      // Use the central Axios client for auth + timeout
-      const res = await import('../../api/client').then(m =>
-        m.default.get('/merchant-transactions/invoice/by-merchant-date', {
-          params: { merchantName, startDate, endDate },
-          responseType: 'blob',
-        })
-      );
-      const url  = URL.createObjectURL(res.data);
-      const a    = document.createElement('a');
-      a.href     = url;
-      const safeStart = startDate.replace(/-/g,'');
-      const safeEnd   = endDate.replace(/-/g,'');
-      const dateStr   = startDate === endDate ? safeStart : `${safeStart}_${safeEnd}`;
-      a.download = `invoice-${merchantName.replace(/\s+/g,'_')}-${dateStr}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      toast.success('Invoice downloaded!');
-      
+      // Fetch invoice HTML from backend
+      const { data: html } = await merchantTxnAPI.getInvoiceHtmlByDate(merchantName, startDate, endDate);
+
+      // Open a new window, write the HTML, and trigger print (Save as PDF)
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      if (!printWindow) {
+        toast.error('Pop-up blocked! Please allow pop-ups for this site.');
+        setDownloading(false);
+        return;
+      }
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+
+      // Wait for content to render, then trigger print
+      printWindow.onload = () => {
+        setTimeout(() => {
+          printWindow.print();
+          setDownloading(false);
+        }, 500);
+      };
+
+      // Fallback if onload doesn't fire (some browsers)
+      setTimeout(() => {
+        try { printWindow.print(); } catch (_) { /* already printing */ }
+        setDownloading(false);
+      }, 2000);
+
+      toast.success('Print dialog opened — choose "Save as PDF" to download!');
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Download failed');
+      setDownloading(false);
     }
-    setDownloading(false);
   };
 
   return (

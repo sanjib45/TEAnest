@@ -956,27 +956,9 @@ exports.generateInvoiceByMerchantDate = async (req, res) => {
 
     const html = buildMultiInvoiceHtml(merchantName, finalStart, finalEnd, transactions, paymentsMap, standaloneAdvances);
 
-    // ── HTML preview ──────────────────────────────────────────────────────────
-    if (format.toLowerCase() === 'html') {
-      return res.setHeader('Content-Type', 'text/html').send(html);
-    }
-
-    // ── PDF via html-pdf-node ─────────────────────────────────────────────────
-    const htmlPdf = require('html-pdf-node');
-    const options = {
-      format:          'A4',
-      margin:          { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
-      printBackground: true,
-    };
-
-    const file   = { content: html };
-    const buffer = await htmlPdf.generatePdf(file, options);
-
-    const safeName = merchantName.replace(/\s+/g, '_').toUpperCase();
-    const safeDate = (finalStart === finalEnd) ? finalStart.replace(/-/g, '') : `${finalStart.replace(/-/g, '')}_${finalEnd.replace(/-/g, '')}`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="invoice-${safeName}-${safeDate}.pdf"`);
-    res.send(buffer);
+    // ── Always return HTML (PDF is generated client-side via window.print) ────
+    // This ensures compatibility with Vercel serverless (no Chromium binary).
+    res.setHeader('Content-Type', 'text/html').send(html);
 
   } catch (err) {
     console.error('[invoiceController.generateInvoiceByMerchantDate] Error:', err.message);
