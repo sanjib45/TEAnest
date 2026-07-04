@@ -564,22 +564,8 @@ exports.generateInvoice = async (req, res) => {
       return res.setHeader('Content-Type', 'text/html').send(html);
     }
 
-    // ── PDF generation via html-pdf-node ─────────────────────────────────────
-    const htmlPdf = require('html-pdf-node');
-
-    const options = {
-      format:          'A4',
-      margin:          { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
-      printBackground: true,
-    };
-
-    const file   = { content: html };
-    const buffer = await htmlPdf.generatePdf(file, options);
-
-    const safeFilename = `invoice-${txn.transactionId || id}-${Date.now()}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
-    res.send(buffer);
+    // ── Always return HTML (PDF is generated client-side via window.print) ────
+    res.setHeader('Content-Type', 'text/html').send(html);
 
   } catch (err) {
     console.error('[invoiceController.generateInvoice] Error:', err.message);
