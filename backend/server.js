@@ -13,11 +13,17 @@ const localIP = Object.values(networkInterfaces)
   .flat()
   .find((iface) => !iface.internal && iface.family === 'IPv4')?.address;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\nDOOARS GREEN Server running on port ${PORT}`);
-  console.log(`  ➜  Local:   http://localhost:${PORT}`);
-  if (localIP) {
-    console.log(`  ➜  Network: http://${localIP}:${PORT}`);
-  }
-  console.log();
-});
+// Vercel serverless environment check
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\nDOOARS GREEN Server running on port ${PORT}`);
+    console.log(`  ➜  Local:   http://localhost:${PORT}`);
+    if (localIP) {
+      console.log(`  ➜  Network: http://${localIP}:${PORT}`);
+    }
+    console.log();
+  });
+}
+
+// Required for Vercel
+module.exports = app;
