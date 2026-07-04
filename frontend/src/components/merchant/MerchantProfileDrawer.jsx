@@ -41,6 +41,195 @@ const fmtDate = (d) =>
 
 const PAYMENT_MODES = ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Other'];
 
+const ADVANCE_MODES = ['Cash', 'Bank Transfer', 'Cheque', 'UPI', 'Other'];
+
+// ── Advance Payment Section ───────────────────────────────────────────────────
+function AdvanceSection({ merchantProfile, onDataChange, onAdvancesLoaded }) {
+  const [advances, setAdvances] = useState([]);
+  const [totalAdvance, setTotalAdvance] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    amount: '',
+    advanceDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+    paymentMode: 'Cash',
+    notes: '',
+  });
+
+  const merchantId = merchantProfile?._id;
+
+  const loadAdvances = useCallback(async () => {
+    if (!merchantId) return;
+    setLoading(true);
+    try {
+      const { data: res } = await merchantMasterAPI.getAdvances(merchantId);
+      setAdvances(res.data.advances);
+      setTotalAdvance(res.data.totalAdvance);
+      if (onAdvancesLoaded) onAdvancesLoaded(res.data.totalAdvance);
+    } catch {
+      toast.error('Failed to load advances');
+    }
+    setLoading(false);
+  }, [merchantId, onAdvancesLoaded]);
+
+  useEffect(() => { loadAdvances(); }, [loadAdvances]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!merchantId) return toast.error('Merchant profile not loaded yet');
+    setSubmitting(true);
+    try {
+      await merchantMasterAPI.createAdvance(merchantId, form);
+      toast.success('Advance recorded!');
+      setForm({
+        amount: '',
+        advanceDate: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16),
+        paymentMode: 'Cash',
+        notes: '',
+      });
+      setShowForm(false);
+      await loadAdvances();
+      onDataChange();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to record advance');
+    }
+    setSubmitting(false);
+  };
+
+  const handleDelete = async (advanceId) => {
+    if (!merchantId) return;
+    try {
+      await merchantMasterAPI.deleteAdvance(merchantId, advanceId);
+      toast.success('Advance deleted');
+      await loadAdvances();
+      onDataChange();
+    } catch {
+      toast.error('Delete failed');
+    }
+  };
+
+  return (
+    <div className="border-b border-outline-variant/20 shrink-0">
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-4 py-3 bg-amber-50/50">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-amber-600 text-[18px]">currency_rupee</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-amber-800">Advance Payments to Farmer</span>
+          {totalAdvance > 0 && (
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-800">
+              Total: ₹{fmt(totalAdvance)}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setShowForm(v => !v)}
+          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
+        >
+          <span className="material-symbols-outlined text-sm">{showForm ? 'close' : 'add'}</span>
+          {showForm ? 'Cancel' : 'Add Advance'}
+        </button>
+      </div>
+
+      {/* Add Advance Form */}
+      {showForm && (
+        <form onSubmit={handleSubmit} className="px-4 py-3 bg-amber-50/30 border-b border-amber-100 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Amount (₹) *</label>
+              <input
+                type="number" step="0.01" min="1" required
+                value={form.amount}
+                onChange={e => setForm(p => ({ ...p, amount: e.target.value }))}
+                placeholder="e.g. 500"
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Date & Time *</label>
+              <input
+                type="datetime-local" required
+                value={form.advanceDate}
+                onChange={e => setForm(p => ({ ...p, advanceDate: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Mode</label>
+              <select
+                value={form.paymentMode}
+                onChange={e => setForm(p => ({ ...p, paymentMode: e.target.value }))}
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              >
+                {ADVANCE_MODES.map(m => <option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-1">Notes</label>
+              <input
+                type="text"
+                value={form.notes}
+                onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                placeholder="Optional note"
+                className="w-full px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-amber-500 transition-all"
+              />
+            </div>
+          </div>
+          <button
+            type="submit" disabled={submitting}
+            className="px-6 py-2 bg-amber-600 text-white rounded-full text-xs font-semibold hover:bg-amber-700 transition-all disabled:opacity-60 flex items-center gap-1.5"
+          >
+            {submitting
+              ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+              : <span className="material-symbols-outlined text-sm">save</span>}
+            {submitting ? 'Saving…' : 'Record Advance'}
+          </button>
+        </form>
+      )}
+
+      {/* Advance list */}
+      <div className="px-4 pb-3">
+        {loading ? (
+          <div className="flex justify-center py-3">
+            <span className="material-symbols-outlined animate-spin text-amber-600 text-xl">progress_activity</span>
+          </div>
+        ) : advances.length === 0 ? (
+          <p className="text-xs text-on-surface-variant italic py-2">No advance payments recorded yet.</p>
+        ) : (
+          <div className="space-y-1.5 pt-2">
+            {advances.map(adv => (
+              <div key={adv._id} className="flex items-center justify-between bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-amber-200 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-amber-700 text-[14px]">payments</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-on-surface">₹{fmt(adv.amount)}</p>
+                    <p className="text-[10px] text-on-surface-variant">
+                      {fmtDate(adv.advanceDate)} · {adv.paymentMode}
+                      {adv.notes && ` · ${adv.notes}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-on-surface-variant/60">{adv.advanceId}</span>
+                  <button
+                    onClick={() => handleDelete(adv._id)}
+                    className="p-1 rounded-lg hover:bg-red-100 text-error transition-colors"
+                    title="Delete advance"
+                  >
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Invoice Download Section ──────────────────────────────────────────────────
 function InvoiceSection({ merchantName }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -753,6 +942,7 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
   const [transactions, setTransactions] = useState([]);
   const [merchantProfile, setMerchantProfile] = useState(null);
   const [loading, setLoading]           = useState(true);
+  const [totalStandaloneAdv, setTotalStandaloneAdv] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -808,6 +998,12 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
     onDataChange();  // refresh parent table + stats cards
   };
 
+  // Called by AdvanceSection whenever advances are loaded/changed
+  const handleAdvancesLoaded = (total) => setTotalStandaloneAdv(total);
+
+  // Net payable = outstanding balance across txns minus standalone advances already given
+  const netPayableAfterAdv = Math.max(0, summary.totalBalance - totalStandaloneAdv);
+
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-start justify-end bg-black/40 backdrop-blur-sm"
@@ -855,16 +1051,17 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
 
         {/* ── Summary bar ── */}
         {!loading && transactions.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 border-b border-outline-variant/20 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-0 border-b border-outline-variant/20 shrink-0">
             {[
               { label: 'Total Net Qty', value: `${summary.totalNetQty.toFixed(2)} kg`, icon: 'grass' },
               { label: 'Gross Amount', value: `₹${fmt(summary.totalGrossAmt)}`, icon: 'payments' },
+              { label: 'Advances Given', value: `₹${fmt(totalStandaloneAdv)}`, icon: 'currency_rupee', highlight: totalStandaloneAdv > 0 },
               { label: 'Final Payable', value: `₹${fmt(summary.totalFinalPay)}`, icon: 'receipt_long' },
               {
-                label: 'Outstanding',
-                value: `₹${fmt(summary.totalBalance)}`,
+                label: 'Net Payable',
+                value: `₹${fmt(netPayableAfterAdv)}`,
                 icon: 'account_balance_wallet',
-                highlight: summary.totalBalance > 0,
+                highlight: netPayableAfterAdv > 0,
               },
             ].map((s) => (
               <div
@@ -887,6 +1084,15 @@ export default function MerchantProfileDrawer({ merchantName, onClose, onDataCha
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── Advance Payments Section ── */}
+        {!loading && merchantProfile && (
+          <AdvanceSection
+            merchantProfile={merchantProfile}
+            onDataChange={handleDataChange}
+            onAdvancesLoaded={handleAdvancesLoaded}
+          />
         )}
 
         {/* ── Invoice Download Section ── */}
