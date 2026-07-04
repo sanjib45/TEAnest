@@ -132,6 +132,7 @@ function InvoiceSection({ merchantName }) {
       a.remove();
       URL.revokeObjectURL(url);
       toast.success('Invoice downloaded!');
+      
     } catch (err) {
       toast.error(err.message || 'Download failed');
     }
