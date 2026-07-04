@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "projects": [
+    {
+      "name": "te-anest-backend",
+      "src": "backend/**",
+      "root": "backend"
+    },
+    {
+      "name": "te-anest-frontend",
+      "src": "frontend/**",
+      "root": "frontend"
+    }
+  ]
+}
