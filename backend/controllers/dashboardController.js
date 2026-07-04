@@ -1,4 +1,6 @@
 const MerchantTransaction = require('../models/MerchantTransaction');
+const MerchantAdvance     = require('../models/MerchantAdvance');
+const Merchant            = require('../models/Merchant');
 const Factory             = require('../models/Factory');
 
 /**
@@ -20,7 +22,8 @@ exports.getDashboard = async (req, res) => {
       factoryPaymentAgg,
       recentMerchant,
       recentFactory,
-      dueMerchants,
+      standaloneAdvances,
+      allMerchants, // needed to map names accurately
     ] = await Promise.all([
 
       // ── Merchant aggregate ──────────────────────────────────────────────
@@ -85,20 +88,69 @@ exports.getDashboard = async (req, res) => {
         .limit(8)
         .select('buyerName date totalQuantity lessPercentage rate advance payments remarks'),
 
-      // ── Top due merchants (balance > 0) ────────────────────────────────
-      MerchantTransaction.aggregate([
-        { $match: { balance: { $gt: 0 } } },
-        {
-          $group: {
-            _id:         '$merchantName',
-            totalDue:    { $sum: '$balance' },
-            lastTxnDate: { $max: '$transactionDate' },
-          },
-        },
-        { $sort: { totalDue: -1 } },
-        { $limit: 5 },
-      ]),
+      // ── All Standalone Advances ────────────────────────────────────────
+      MerchantAdvance.find().lean(),
+
+      // ── All Merchants ──────────────────────────────────────────────────
+      Merchant.find().select('name _id').lean(),
     ]);
+
+    // Build a map of merchantId -> name
+    const merchantIdToName = {};
+    const merchantNameToId = {};
+    allMerchants.forEach(m => {
+      merchantIdToName[m._id.toString()] = m.name;
+      const lowerName = m.name.toLowerCase().trim();
+      merchantNameToId[lowerName] = m._id.toString();
+    });
+
+    // Sum up standalone advances per merchant name
+    const advanceByMerchantName = {};
+    let totalStandaloneAdvances = 0;
+    standaloneAdvances.forEach(adv => {
+      const amt = adv.amount || 0;
+      totalStandaloneAdvances += amt;
+      const mId = adv.merchant?.toString();
+      if (mId && merchantIdToName[mId]) {
+        const mName = merchantIdToName[mId];
+        advanceByMerchantName[mName] = (advanceByMerchantName[mName] || 0) + amt;
+      }
+    });
+
+    // We must manually compute due merchants since we have to subtract the standalone advances
+    const allMerchantTxns = await MerchantTransaction.find().select('merchantName balance transactionDate').lean();
+    const merchantDueMap = {};
+    const merchantDateMap = {};
+
+    allMerchantTxns.forEach(t => {
+      // aggregate balance natively first
+      const name = t.merchantName;
+      if (!merchantDueMap[name]) merchantDueMap[name] = 0;
+      merchantDueMap[name] += (t.balance || 0);
+
+      // keep track of latest txn date
+      if (!merchantDateMap[name] || new Date(t.transactionDate) > new Date(merchantDateMap[name])) {
+        merchantDateMap[name] = t.transactionDate;
+      }
+    });
+
+    // Subtract standalone advances from each merchant's total balance
+    const computedDueMerchants = [];
+    Object.keys(merchantDueMap).forEach(name => {
+      // Also try to match name strictly or by lower case
+      const exactAdv = advanceByMerchantName[name] || 0;
+      const netDue = merchantDueMap[name] - exactAdv;
+      
+      if (netDue > 0) {
+        computedDueMerchants.push({
+          _id: name,
+          totalDue: Math.round(netDue * 100) / 100,
+          lastTxnDate: merchantDateMap[name]
+        });
+      }
+    });
+
+    const dueMerchants = computedDueMerchants.sort((a, b) => b.totalDue - a.totalDue).slice(0, 5);
 
     const ms = merchantSummary[0] || {
       totalTransactions: 0, totalNetQty: 0, totalGrossAmount: 0,
@@ -157,7 +209,8 @@ exports.getDashboard = async (req, res) => {
         kpi: {
           totalMerchantTxns:   ms.totalTransactions,
           totalProcuredQty:    parseFloat((ms.totalNetQty || 0).toFixed(2)),
-          totalMerchantDue:    parseFloat((ms.totalBalance || 0).toFixed(2)),
+          totalMerchantDue:    parseFloat(((ms.totalBalance || 0) - totalStandaloneAdvances).toFixed(2)),
+
           totalFactorySales:   fs.totalSales,
           totalSoldQty:        parseFloat((fs.totalNetQty || 0).toFixed(2)),
           totalFactoryDue:     fDue,
